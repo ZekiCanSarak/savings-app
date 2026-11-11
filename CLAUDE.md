@@ -13,13 +13,13 @@ A personal savings and budgeting app for one user, on their own phone. No accoun
 - **Budgeting tips and suggested savings amounts** are based on income and goals, e.g. "save £75/month to hit New laptop by March 2027".
 - **Reminders** such as "You have £340 left to save for New laptop".
 
-Currency is GBP (£) and locale is `en-GB`. Dates are shown like "March 2027" or "11 Nov 2026".
+The default currency is GBP (£), and the user can pick another one in Settings (see `src/constants/currencies.ts`). The locale is `en-GB`. Dates are shown like "March 2027" or "11 Nov 2026".
 
 ## Status
 
 - [x] Project setup, bottom tab bar with 4 placeholder tabs (Home, Goals, Budget, Settings)
-- [ ] Data model + local storage
-- [ ] Settings: monthly income
+- [x] Data model + local storage (Zustand + AsyncStorage) + goal helper functions
+- [ ] Settings: name, currency, monthly income
 - [ ] Goals: create / edit / delete, log savings
 - [ ] Home: summary + charts
 - [ ] Budget: suggestions + tips
@@ -34,7 +34,21 @@ Update this list as features land.
 - **Expo Router** for navigation, with file-based routes in `src/app/`. The tab bar uses `NativeTabs` from `expo-router/native-tabs` on iOS/Android, and `expo-router/ui` tabs on web.
 - Styling: React Native `StyleSheet` plus the theme tokens in `src/constants/theme.ts`. Light and dark mode are both supported.
 - React Compiler and typed routes are enabled (`app.json` → `experiments`).
-- Planned, not installed yet (choose and confirm when the feature is built): on-device storage (e.g. `@react-native-async-storage/async-storage`), charts, and `expo-notifications` for local reminders.
+- **State + storage:** Zustand (`zustand`) with its `persist` middleware, which saves to `@react-native-async-storage/async-storage`. See "Data layer" below.
+- Planned, not installed yet (choose and confirm when the feature is built): charts, and `expo-notifications` for local reminders.
+
+## Data layer
+
+- **Types** are in `src/types/models.ts`: `UserProfile`, `SavingsGoal`, `Contribution`, and `AppData` (everything that gets saved).
+- **Store:** `src/storage/app-store.ts` is a single Zustand store holding `AppData` plus actions (`addGoal`, `addContribution`, `updateProfile`, `deleteGoal`, `resetAllData`, …). Every change is saved automatically to AsyncStorage under the key `savings-app-data`.
+- **Screens use the hooks in `src/hooks/use-app-data.ts`**, such as `useGoals()`, `useGoal(id)`, `useGoalProgress(id)`, `useCurrency()` and `useAppActions()`. Screens don't import `useAppStore` or AsyncStorage directly.
+- **Calculations** live in `src/utils/goals.ts` (`totalSaved`, `amountRemaining`, `percentComplete`, `monthlyAmountNeeded`). They're pure functions, and the hooks call them.
+- **Saved-so-far is never stored.** It's always calculated from contributions, which avoids the two disagreeing.
+- `deleteGoal` also deletes that goal's contributions.
+- **Startup:** `src/app/_layout.tsx` keeps the splash screen up until saved data has loaded (`isReady`). If loading fails, the app starts with empty data instead of hanging.
+- **Changing the saved shape:** bump `STORAGE_VERSION` in `app-store.ts` and convert old data in `migrate`, otherwise existing users' data breaks. Adding a new field with a default only needs the default in `initialData`, because `merge` fills it in.
+- **Zustand selector rule:** a selector must return existing state, e.g. `(s) => s.goals`. Never build a new array or object inside a selector (`(s) => s.goals.filter(...)`): that re-renders forever. Select the raw data, then compute outside the selector, or wrap the selector in `useShallow`.
+- Amounts handed to the store must already be valid integer minor units. Screens validate user input with `parseMoneyInput`, which returns `null` if the input is invalid.
 
 Expo APIs changed a lot in recent SDKs. Before using an Expo API, check the SDK 58 docs (see AGENTS.md) or the type definitions in `node_modules`, and don't rely on memory.
 
@@ -54,17 +68,25 @@ src/
     themed-text.tsx     Text that follows light/dark theme
     themed-view.tsx     View that follows light/dark theme
     placeholder-screen.tsx  Temporary "coming soon" screen
-  constants/theme.ts    Colours, spacing, fonts
-  hooks/                Reusable hooks (e.g. use-theme)
+  constants/
+    theme.ts            Colours, spacing, fonts
+    currencies.ts       Currencies the user can choose
+  hooks/
+    use-app-data.ts     Hooks screens use to read/change app data
+    use-theme.ts        Current theme colours
+  storage/
+    app-store.ts        Zustand store, saved to AsyncStorage
+  types/
+    models.ts           UserProfile, SavingsGoal, Contribution, AppData
+  utils/                Pure functions (no React) — easy to test
+    goals.ts            Saved / remaining / % / per-month calculations
+    money.ts            formatMoney, parseMoneyInput
+    dates.ts            ISO date helpers and formatting
+    id.ts               createId
 assets/                 Images, icons, splash
 ```
 
-Folders to add as features arrive:
-
-- `src/types/` — shared TypeScript types (`Goal`, `SavingsEntry`, `Budget`…)
-- `src/storage/` — reading and writing device storage. Screens never touch storage directly.
-- `src/utils/` — pure functions such as money formatting, date maths and savings suggestions. Keep these free of React so they are easy to test.
-- `src/components/<feature>/` — components used by one feature only (e.g. `components/goals/goal-card.tsx`)
+Add `src/components/<feature>/` for components used by one feature only (e.g. `components/goals/goal-card.tsx`).
 
 Non-route files must **not** go in `src/app/`, because every file there becomes a screen. For a screen that needs sub-pages (e.g. goal details), turn it into a folder: `src/app/goals/index.tsx` and `src/app/goals/[id].tsx`.
 
@@ -75,9 +97,9 @@ Non-route files must **not** go in `src/app/`, because every file there becomes 
 - Import with the `@/` alias (`@/components/...` → `src/...`) rather than long `../../` paths.
 - Function components and hooks only, no classes. Type props with a `type XProps = {...}`.
 - No `any`. Model data with explicit types in `src/types/`.
-- **Money is stored as whole pence (integers)**, e.g. £9.99 → `999`, to avoid floating-point rounding errors. Convert to £ only for display, using one shared formatter (`Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' })`).
-- **Dates are stored as ISO strings** (`'2027-03-31'`) and formatted only for display.
-- IDs: generate with a small helper in `src/utils/`.
+- **Money is stored as whole minor units (pence/cents, integers)**, e.g. £9.99 → `999`, to avoid floating-point rounding errors. Only display it through `formatMoney(amount, currency)` from `src/utils/money.ts`, using the user's currency from `useCurrency()`. Every supported currency has 2 decimal places, so don't add zero-decimal currencies like JPY without updating the money helpers.
+- **Calendar dates are stored as `'YYYY-MM-DD'` strings** and **timestamps as full ISO strings**. Use the helpers in `src/utils/dates.ts`. Don't use `new Date('2027-03-31')`, because it reads the date as UTC and can show the wrong day.
+- IDs: use `createId()` from `src/utils/id.ts`.
 - Styles: `StyleSheet.create` at the bottom of the file. Take colours from `useTheme()` / `ThemedText` / `ThemedView` and spacing from `Spacing`, and don't hard-code hex colours or pixel gaps in screens.
 - Screens add `BottomTabInset` to their bottom padding so content isn't hidden behind the tab bar.
 - Keep screens thin: calculations go in `src/utils/`, storage access in `src/storage/`.
