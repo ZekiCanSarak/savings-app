@@ -54,3 +54,13 @@ export function monthlyAmountNeeded(
   const months = savingMonthsLeft(goal.targetDate, today);
   return months <= 0 ? remaining : Math.ceil(remaining / months);
 }
+
+/** Goals in display order: in-progress goals first (oldest first), then completed ones. */
+export function sortGoalsForDisplay(goals: SavingsGoal[], contributions: Contribution[]): SavingsGoal[] {
+  return [...goals].sort((a, b) => {
+    const aDone = isGoalComplete(a, contributions);
+    const bDone = isGoalComplete(b, contributions);
+    if (aDone !== bDone) return aDone ? 1 : -1;
+    return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
+  });
+}

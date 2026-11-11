@@ -21,7 +21,8 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Data model + local storage (Zustand + AsyncStorage) + goal helper functions
 - [x] Onboarding (first launch only): name → currency → monthly income after tax
 - [x] Settings: edit name, currency, monthly income; delete all data
-- [ ] Goals: create / edit / delete, log savings
+- [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
+- [ ] Log savings (contributions) toward a goal: the detail screen already shows a "Savings history" section
 - [ ] Home: summary + charts
 - [ ] Budget: suggestions + tips
 - [ ] Reminders (local notifications)
@@ -61,15 +62,20 @@ src/
   app/                  Screens. Each file is a route (Expo Router).
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
     onboarding.tsx      First-launch welcome flow (3 steps)
+    goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
-      goals.tsx         Goals tab
+      goals/            Goals tab (its own Stack)
+        _layout.tsx     Stack: list → detail
+        index.tsx       Goal list + empty state
+        [id].tsx        Goal detail: progress, history, edit, delete
       budget.tsx        Budget tab
       settings.tsx      Settings tab
   components/           Reusable UI pieces
-    ui/                 Generic building blocks: button.tsx, text-field.tsx
+    ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx
+    goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
     themed-text.tsx     Text that follows light/dark theme
@@ -78,6 +84,7 @@ src/
   constants/
     theme.ts            Colours, spacing, fonts
     currencies.ts       Currencies the user can choose
+    goal-emojis.ts      Emojis offered for goals
   hooks/
     use-app-data.ts     Hooks screens use to read/change app data
     use-theme.ts        Current theme colours
@@ -89,14 +96,22 @@ src/
     goals.ts            Saved / remaining / % / per-month calculations
     money.ts            formatMoney, parseMoneyInput
     dates.ts            ISO date helpers and formatting
-    validation.ts       Form validators (name, income)
+    validation.ts       Form validators (name, income, goal name/target/date)
     id.ts               createId
 assets/                 Images, icons, splash
 ```
 
 Add `src/components/<feature>/` for components used by one feature only (e.g. `components/goals/goal-card.tsx`). Use the shared `Button` and `TextField` from `components/ui/` for forms, rather than making new ones.
 
-Non-route files must **not** go in `src/app/`, because every file there becomes a screen. For a screen that needs sub-pages (e.g. goal details), turn it into a folder with its own `_layout.tsx` (a `Stack`): `src/app/(tabs)/goals/_layout.tsx`, `src/app/(tabs)/goals/index.tsx` and `src/app/(tabs)/goals/[id].tsx`. Screens that should cover the tab bar (e.g. a full-screen "add goal" form) go at the root, next to `onboarding.tsx`, inside the `isOnboarded` guard.
+Non-route files must **not** go in `src/app/`, because every file there becomes a screen. For a screen that needs sub-pages (e.g. goal details), turn it into a folder with its own `_layout.tsx` (a `Stack`), as the Goals tab does. Screens that should cover the tab bar (like `goal-editor.tsx`) go at the root and are registered in `src/app/_layout.tsx` inside the `isOnboarded` guard, usually with `presentation: 'modal'`.
+
+Navigation patterns:
+- Push with an object href, e.g. `router.push({ pathname: '/goals/[id]', params: { id } })`. Typed routes check the path.
+- Read params with `useLocalSearchParams<{ id: string }>()`. Any screen that takes an id must handle a missing item (it may have been deleted, or the web page refreshed) by showing "not found" with a way back.
+- Close or go back with `router.canGoBack() ? router.back() : router.replace(...)`, so a web refresh doesn't leave the user stuck.
+- When deleting the item a screen shows, navigate away first and delete second.
+- Set a page's header title from inside it with `<Stack.Screen options={{ title }} />`.
+- Goal target dates are months: the month picker stores the last day of the chosen month.
 
 ## Coding conventions
 
@@ -129,6 +144,6 @@ npx expo install <pkg>  # add a library at the SDK-compatible version
 
 Before committing: run `npx tsc --noEmit` and make sure the app still opens in Expo Go.
 
-Known pre-existing template issues (not from our code): the type errors for `app-tabs.web.tsx` TabButton `ref` typing and for the `*.css` module declarations (`expo start` generates those declarations in `expo-env.d.ts`), plus one lint error in `src/hooks/use-color-scheme.web.ts`.
+Known pre-existing template issues (not from our code): the type error for `app-tabs.web.tsx` TabButton `ref` typing and one lint error in `src/hooks/use-color-scheme.web.ts`. On a fresh clone, `tsc` also reports `*.css` errors and doesn't check route names until `npx expo start` has run once, because that's what generates `expo-env.d.ts` and `.expo/types/`.
 
 To see onboarding again while developing, use Settings → Delete all data.

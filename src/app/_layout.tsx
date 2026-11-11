@@ -26,6 +26,8 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Protected guard={isOnboarded}>
           <Stack.Screen name="(tabs)" />
+          {/* Add / edit a goal. Opens over the tabs. */}
+          <Stack.Screen name="goal-editor" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!isOnboarded}>
           <Stack.Screen name="onboarding" />

@@ -53,3 +53,26 @@ export function formatDate(date: IsoDate): string {
 export function formatMonthYear(date: IsoDate): string {
   return parseIsoDate(date).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
+
+/** A calendar month. `month` is 0–11 (January = 0), like JavaScript's Date. */
+export type YearMonth = { year: number; month: number };
+
+export function yearMonthOf(date: IsoDate): YearMonth {
+  const d = parseIsoDate(date);
+  return { year: d.getFullYear(), month: d.getMonth() };
+}
+
+export function addMonths({ year, month }: YearMonth, count: number): YearMonth {
+  const d = new Date(year, month + count, 1);
+  return { year: d.getFullYear(), month: d.getMonth() };
+}
+
+/** Negative if a is earlier, 0 if the same month, positive if a is later. */
+export function compareYearMonth(a: YearMonth, b: YearMonth): number {
+  return a.year * 12 + a.month - (b.year * 12 + b.month);
+}
+
+/** The last day of the month, e.g. { 2027, 2 } → '2027-03-31'. */
+export function endOfMonthIsoDate({ year, month }: YearMonth): IsoDate {
+  return toIsoDate(new Date(year, month + 1, 0));
+}
