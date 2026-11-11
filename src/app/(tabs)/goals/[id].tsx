@@ -1,9 +1,14 @@
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 
+import { ContributionRow } from '@/components/goals/contribution-row';
+import { GoalCelebration } from '@/components/goals/goal-celebration';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { Confetti } from '@/components/ui/confetti';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import {
@@ -13,7 +18,8 @@ import {
   useGoalContributions,
   useGoalProgress,
 } from '@/hooks/use-app-data';
-import { formatDate, formatMonthYear, toIsoDate } from '@/utils/dates';
+import type { Contribution } from '@/types/models';
+import { formatDate, formatMonthYear, formatRelativeDay, savingMonthsLeft, toIsoDate } from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
 
 /** Leaves this screen; falls back to the list if there's nothing to go back to (e.g. web refresh). */
@@ -22,13 +28,37 @@ function goBackToList() {
   else router.replace('/goals');
 }
 
+/** Shows a yes/no dialog. Alert buttons don't work on web, so it uses window.confirm there. */
+function confirm(title: string, message: string, confirmLabel: string, onConfirm: () => void) {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title} ${message}`)) onConfirm();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: confirmLabel, style: 'destructive', onPress: onConfirm },
+  ]);
+}
+
 export default function GoalDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const goal = useGoal(id);
   const progress = useGoalProgress(id);
   const history = useGoalContributions(id);
   const currency = useCurrency();
-  const { deleteGoal } = useAppActions();
+  const { deleteGoal, deleteContribution } = useAppActions();
+  const reduceMotion = useReducedMotion();
+
+  // Celebrate when progress crosses into 100% while this screen is open
+  // (e.g. after "Add money"), but not when opening an already-finished goal.
+  // This is React's "adjust state when a value changes" pattern, done during render.
+  const percent = progress?.percent ?? 0;
+  const [lastPercent, setLastPercent] = useState(percent);
+  const [celebrating, setCelebrating] = useState(false);
+  if (percent !== lastPercent) {
+    setLastPercent(percent);
+    setCelebrating(lastPercent < 100 && percent >= 100);
+  }
 
   if (!goal || !progress) {
     return (
@@ -43,27 +73,31 @@ export default function GoalDetailScreen() {
   const money = (amount: number) => formatMoney(amount, currency);
   const complete = progress.remaining === 0;
 
-  function confirmDelete() {
+  function confirmDeleteGoal() {
     if (!goal) return;
     const extra =
       history.length > 0
         ? ` This also deletes the ${history.length} saving${history.length === 1 ? '' : 's'} you logged for it.`
         : '';
-    const message = `“${goal.name}” will be removed from this phone.${extra} This can’t be undone.`;
-    const remove = () => {
-      // Leave the screen first, so it doesn't briefly show "not found".
-      goBackToList();
-      deleteGoal(goal.id);
-    };
-    if (Platform.OS === 'web') {
-      // Alert buttons don't work on web.
-      if (window.confirm(`Delete this goal? ${message}`)) remove();
-      return;
-    }
-    Alert.alert('Delete this goal?', message, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: remove },
-    ]);
+    confirm(
+      'Delete this goal?',
+      `“${goal.name}” will be removed from this phone.${extra} This can’t be undone.`,
+      'Delete',
+      () => {
+        // Leave the screen first, so it doesn't briefly show "not found".
+        goBackToList();
+        deleteGoal(goal.id);
+      },
+    );
+  }
+
+  function confirmDeleteContribution(entry: Contribution) {
+    confirm(
+      'Delete this saving?',
+      `${money(entry.amount)} from ${formatRelativeDay(entry.date).toLowerCase()} will be removed from “${goal?.name}”.`,
+      'Delete',
+      () => deleteContribution(entry.id),
+    );
   }
 
   return (
@@ -72,6 +106,14 @@ export default function GoalDetailScreen() {
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}>
+        {celebrating && (
+          <GoalCelebration
+            goalName={goal.name}
+            targetText={money(goal.targetAmount)}
+            onDismiss={() => setCelebrating(false)}
+          />
+        )}
+
         <View style={styles.hero}>
           <ThemedText style={styles.heroEmoji}>{goal.emoji}</ThemedText>
           <ThemedText type="subtitle" style={styles.center}>
@@ -99,18 +141,32 @@ export default function GoalDetailScreen() {
           <ProgressBar percent={progress.percent} height={12} accessibilityLabel="Goal progress" />
           <ThemedText themeColor={complete ? 'tint' : 'textSecondary'}>
             {complete
-              ? 'You’ve reached this goal — well done! 🎉'
+              ? 'You’ve reached this goal. Well done! 🎉'
               : `You have ${money(progress.remaining)} left to save.`}
           </ThemedText>
+          <Button
+            title="+ Add money"
+            onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
+          />
         </ThemedView>
 
-        {!complete && progress.monthlyNeeded !== null && goal.targetDate && (
+        {!complete && goal.targetDate && progress.monthlyNeeded !== null && (
           <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">To stay on track</ThemedText>
-            <ThemedText themeColor="textSecondary">
-              Save about {money(progress.monthlyNeeded)} a month to reach it by{' '}
-              {formatMonthYear(goal.targetDate)}.
-            </ThemedText>
+            <ThemedText type="smallBold">Monthly plan</ThemedText>
+            {savingMonthsLeft(goal.targetDate) > 0 ? (
+              <ThemedText>
+                You need to save{' '}
+                <ThemedText type="smallBold" style={styles.inlineEmphasis}>
+                  {money(progress.monthlyNeeded)}
+                </ThemedText>{' '}
+                per month to reach this by {formatMonthYear(goal.targetDate)}.
+              </ThemedText>
+            ) : (
+              <ThemedText themeColor="textSecondary">
+                Your target date ({formatMonthYear(goal.targetDate)}) has passed, and you still have{' '}
+                {money(progress.remaining)} to go. Edit the goal to pick a new date.
+              </ThemedText>
+            )}
           </ThemedView>
         )}
 
@@ -118,21 +174,16 @@ export default function GoalDetailScreen() {
           <ThemedText type="smallBold">Savings history</ThemedText>
           {history.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
-              Nothing logged yet. Logging money you’ve saved is coming soon.
+              Nothing logged yet. Tap “Add money” when you put some aside.
             </ThemedText>
           ) : (
             history.map((entry) => (
-              <View key={entry.id} style={styles.row}>
-                <View style={styles.flex}>
-                  <ThemedText type="small">{formatDate(entry.date)}</ThemedText>
-                  {entry.note ? (
-                    <ThemedText type="small" themeColor="textSecondary">
-                      {entry.note}
-                    </ThemedText>
-                  ) : null}
-                </View>
-                <ThemedText type="smallBold">+{money(entry.amount)}</ThemedText>
-              </View>
+              <ContributionRow
+                key={entry.id}
+                contribution={entry}
+                currency={currency}
+                onDelete={() => confirmDeleteContribution(entry)}
+              />
             ))
           )}
         </ThemedView>
@@ -147,9 +198,12 @@ export default function GoalDetailScreen() {
             variant="secondary"
             onPress={() => router.push({ pathname: '/goal-editor', params: { id: goal.id } })}
           />
-          <Button title="Delete goal" variant="danger" onPress={confirmDelete} />
+          <Button title="Delete goal" variant="danger" onPress={confirmDeleteGoal} />
         </View>
       </ScrollView>
+
+      {/* Usually triggered from the Add money sheet, so wait for it to close. */}
+      {celebrating && !reduceMotion && <Confetti startDelay={450} />}
     </ThemedView>
   );
 }
@@ -195,8 +249,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
   },
-  flex: {
-    flex: 1,
+  inlineEmphasis: {
+    fontSize: 16,
   },
   actions: {
     gap: Spacing.two,

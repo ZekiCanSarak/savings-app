@@ -28,6 +28,8 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           {/* Add / edit a goal. Opens over the tabs. */}
           <Stack.Screen name="goal-editor" options={{ presentation: 'modal' }} />
+          {/* Log money saved toward a goal. */}
+          <Stack.Screen name="add-money" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!isOnboarded}>
           <Stack.Screen name="onboarding" />

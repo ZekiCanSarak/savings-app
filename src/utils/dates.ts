@@ -76,3 +76,16 @@ export function compareYearMonth(a: YearMonth, b: YearMonth): number {
 export function endOfMonthIsoDate({ year, month }: YearMonth): IsoDate {
   return toIsoDate(new Date(year, month + 1, 0));
 }
+
+/** Moves a date by whole days: addDays('2026-11-11', -1) → '2026-11-10'. */
+export function addDays(date: IsoDate, count: number): IsoDate {
+  const d = parseIsoDate(date);
+  return toIsoDate(new Date(d.getFullYear(), d.getMonth(), d.getDate() + count));
+}
+
+/** 'Today', 'Yesterday', or a date like '11 Nov 2026'. */
+export function formatRelativeDay(date: IsoDate, today: IsoDate = todayIsoDate()): string {
+  if (date === today) return 'Today';
+  if (date === addDays(today, -1)) return 'Yesterday';
+  return formatDate(date);
+}

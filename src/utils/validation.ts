@@ -83,6 +83,35 @@ export function validateGoalTargetDate(
   return { ok: true, value: date };
 }
 
+export const NOTE_MAX_LENGTH = 100;
+
+export function validateContributionAmount(text: string): ValidationResult<number> {
+  return validateAmount(text, {
+    emptyError: 'Please enter how much you saved.',
+    negativeError: "The amount can't be negative. To fix a mistake, delete it from the history.",
+    max: MAX_GOAL_TARGET,
+  });
+}
+
+/** Notes are optional. Returns undefined for an empty note. */
+export function validateNote(text: string): ValidationResult<string | undefined> {
+  const note = text.trim().replace(/\s+/g, ' ');
+  if (!note) return { ok: true, value: undefined };
+  if (note.length > NOTE_MAX_LENGTH) {
+    return { ok: false, error: `Please keep the note under ${NOTE_MAX_LENGTH} characters.` };
+  }
+  return { ok: true, value: note };
+}
+
+/** Money can't be logged as saved on a day that hasn't happened yet. */
+export function validateContributionDate(
+  date: IsoDate,
+  today: IsoDate = todayIsoDate(),
+): ValidationResult<IsoDate> {
+  if (date > today) return { ok: false, error: 'That date is in the future.' };
+  return { ok: true, value: date };
+}
+
 /** Shows a stored amount in an input box: 185050 → '1850.50', 185000 → '1850'. */
 export function amountToInputText(minorUnits: number | null): string {
   if (minorUnits === null) return '';

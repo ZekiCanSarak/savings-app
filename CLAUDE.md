@@ -22,7 +22,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Onboarding (first launch only): name → currency → monthly income after tax
 - [x] Settings: edit name, currency, monthly income; delete all data
 - [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
-- [ ] Log savings (contributions) toward a goal: the detail screen already shows a "Savings history" section
+- [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
 - [ ] Home: summary + charts
 - [ ] Budget: suggestions + tips
 - [ ] Reminders (local notifications)
@@ -63,19 +63,22 @@ src/
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
     onboarding.tsx      First-launch welcome flow (3 steps)
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
+    add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
       goals/            Goals tab (its own Stack)
         _layout.tsx     Stack: list → detail
         index.tsx       Goal list + empty state
-        [id].tsx        Goal detail: progress, history, edit, delete
+        [id].tsx        Goal detail: progress, add money, monthly plan, history, edit, delete, celebration
       budget.tsx        Budget tab
       settings.tsx      Settings tab
   components/           Reusable UI pieces
-    ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx
+    ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx,
+                        day-stepper.tsx, confetti.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx
-    goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx
+    goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
+                        contribution-row.tsx, goal-celebration.tsx
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
     themed-text.tsx     Text that follows light/dark theme
@@ -96,7 +99,7 @@ src/
     goals.ts            Saved / remaining / % / per-month calculations
     money.ts            formatMoney, parseMoneyInput
     dates.ts            ISO date helpers and formatting
-    validation.ts       Form validators (name, income, goal name/target/date)
+    validation.ts       Form validators (name, income, goal, contribution amount/date/note)
     id.ts               createId
 assets/                 Images, icons, splash
 ```
@@ -112,6 +115,13 @@ Navigation patterns:
 - When deleting the item a screen shows, navigate away first and delete second.
 - Set a page's header title from inside it with `<Stack.Screen options={{ title }} />`.
 - Goal target dates are months: the month picker stores the last day of the chosen month.
+- Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by deleting the entry (no editing, and no negative amounts).
+
+Animation & effects:
+- Use `react-native-reanimated` (already installed). Use `.get()` / `.set()` on shared values rather than `.value`, because the React Compiler is on.
+- Skip decorative motion (like confetti) when `useReducedMotion()` is true. Layout animations such as `ZoomIn` respect that setting by themselves.
+- Don't call `setState` synchronously inside `useEffect` (the linter flags it). To react to a value changing, use the "store the previous value in state and compare during render" pattern, as the celebration does in `goals/[id].tsx`.
+- Randomness in a component goes in a lazy `useState(() => ...)` initialiser, so it runs once.
 
 ## Coding conventions
 
@@ -125,7 +135,7 @@ Navigation patterns:
 - IDs: use `createId()` from `src/utils/id.ts`.
 - Styles: `StyleSheet.create` at the bottom of the file. Take colours from `useTheme()` / `ThemedText` / `ThemedView` and spacing from `Spacing`, and don't hard-code hex colours or pixel gaps in screens. Theme colours: `text`, `textSecondary`, `background`, `backgroundElement`, `backgroundSelected`, `tint` (green accent) with `onTint` for text on top of it, `danger` and `border`. Any new colour needs both a light and a dark value.
 - Forms: put `KeyboardAvoidingView` (`behavior="padding"` on iOS) around a `ScrollView` with `keyboardShouldPersistTaps="handled"`. Use `keyboardType="decimal-pad"` for money fields.
-- Confirmation dialogs: `Alert.alert` buttons don't work on web, so use `window.confirm` when `Platform.OS === 'web'`.
+- Confirmation dialogs: `Alert.alert` buttons don't work on web, so use `window.confirm` when `Platform.OS === 'web'`. Destructive actions (deleting a goal, deleting a saving, deleting all data) always ask first.
 - Accessibility: give interactive elements an `accessibilityRole` (and an `accessibilityState` where it applies). Keep tap targets at least 44pt tall.
 - Screens add `BottomTabInset` to their bottom padding so content isn't hidden behind the tab bar.
 - Keep screens thin: calculations go in `src/utils/`, storage access in `src/storage/`.
