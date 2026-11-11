@@ -6,7 +6,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { CurrencyCode, SavingsGoal } from '@/types/models';
-import { formatMonthYear } from '@/utils/dates';
+import { formatMonthYear, todayIsoDate } from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
 
 type GoalCardProps = {
@@ -26,7 +26,13 @@ export function GoalCard({ goal, saved, remaining, percent, currency, onPress, i
   const savedText = formatMoney(saved, currency);
   const targetText = formatMoney(goal.targetAmount, currency);
   const remainingText = formatMoney(remaining, currency);
-  const dateText = goal.targetDate ? `, by ${formatMonthYear(goal.targetDate)}` : '';
+  const overdue = !complete && goal.targetDate !== null && goal.targetDate < todayIsoDate();
+  const dateLabel = goal.targetDate
+    ? overdue
+      ? `Target date passed (${formatMonthYear(goal.targetDate)})`
+      : `by ${formatMonthYear(goal.targetDate)}`
+    : null;
+  const dateText = dateLabel ? `, ${dateLabel}` : '';
 
   return (
     <Animated.View
@@ -53,9 +59,9 @@ export function GoalCard({ goal, saved, remaining, percent, currency, onPress, i
             <ThemedText type="heading" numberOfLines={2}>
               {goal.name}
             </ThemedText>
-            {goal.targetDate ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                by {formatMonthYear(goal.targetDate)}
+            {dateLabel ? (
+              <ThemedText type="small" themeColor={overdue ? 'danger' : 'textSecondary'}>
+                {dateLabel}
               </ThemedText>
             ) : null}
           </View>

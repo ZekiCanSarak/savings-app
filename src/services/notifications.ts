@@ -118,6 +118,16 @@ export async function cancelReminder() {
   await Notifications.cancelScheduledNotificationAsync(REMINDER_ID).catch(() => {});
 }
 
+/** Cancels every notification this app has scheduled (used by "Reset all data"). */
+export async function cancelAllReminders() {
+  if (!notificationsSupported) return;
+  await Promise.all(
+    [REMINDER_ID, TEST_ID].map((id) =>
+      Notifications.cancelScheduledNotificationAsync(id).catch(() => {}),
+    ),
+  );
+}
+
 /** Sends one reminder in a few seconds, so the user can see what it looks like. */
 export async function sendTestReminder(message: ReminderMessage, seconds = 5) {
   if (!notificationsSupported) return;

@@ -93,16 +93,37 @@ function BudgetContent({
     .reduce((sum, g) => sum + (monthlyAmountNeeded(g, contributions, today) ?? 0), 0);
 
   const tips = tipsFor(incomeLevel(monthlyIncome, currency));
+  const noIncome = monthlyIncome === 0;
 
   return (
     <>
-      <Card
-        title="Suggested split"
-        subtitle="The 50/30/20 rule: half on needs, 30% on wants and 20% on savings. A simple place to start."
-        index={0}>
-        <BudgetSplitChart split={split} currency={currency} />
-      </Card>
+      {noIncome ? (
+        <Card title="No income right now" index={0}>
+          <ThemedText themeColor="textSecondary">
+            Your income is set to {money(0)}, so there’s nothing to split yet. That’s okay. Any
+            money you can put aside still counts, and when your income changes, update it in
+            Settings to see a suggested budget.
+          </ThemedText>
+        </Card>
+      ) : (
+        <Card
+          title="Suggested split"
+          subtitle="The 50/30/20 rule: half on needs, 30% on wants and 20% on savings. A simple place to start."
+          index={0}>
+          <BudgetSplitChart split={split} currency={currency} />
+        </Card>
+      )}
 
+      {noIncome ? (
+        <Card title={`Savings in ${monthName}`} index={1}>
+          <View accessible accessibilityLabel={`${money(saved)} saved in ${monthName}`}>
+            <ThemedText type="title">{money(saved)}</ThemedText>
+            <ThemedText type="small" themeColor="textSecondary">
+              saved so far this month
+            </ThemedText>
+          </View>
+        </Card>
+      ) : (
       <Card title={`Savings in ${monthName}`} subtitle={`Suggested: ${money(suggested)} a month (20%)`} index={1}>
         <View
           style={styles.row}
@@ -138,6 +159,7 @@ function BudgetContent({
           </ThemedText>
         )}
       </Card>
+      )}
 
       <Card title="Tips for you" subtitle={`${tips.length} ideas to help you save`} index={2}>
         <View style={styles.tips}>

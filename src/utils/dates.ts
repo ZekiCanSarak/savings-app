@@ -89,3 +89,13 @@ export function formatRelativeDay(date: IsoDate, today: IsoDate = todayIsoDate()
   if (date === addDays(today, -1)) return 'Yesterday';
   return formatDate(date);
 }
+
+/**
+ * The same, for the middle of a sentence: 'today', 'yesterday', 'on 11 Nov 2026'.
+ * (Lower-casing formatRelativeDay would wrongly give '11 nov 2026'.)
+ */
+export function relativeDayInSentence(date: IsoDate, today: IsoDate = todayIsoDate()): string {
+  if (date === today) return 'today';
+  if (date === addDays(today, -1)) return 'yesterday';
+  return `on ${formatDate(date)}`;
+}

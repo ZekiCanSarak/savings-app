@@ -23,7 +23,13 @@ import {
   useGoalProgress,
 } from '@/hooks/use-app-data';
 import type { Contribution } from '@/types/models';
-import { formatDate, formatMonthYear, formatRelativeDay, savingMonthsLeft, toIsoDate } from '@/utils/dates';
+import {
+  formatDate,
+  formatMonthYear,
+  relativeDayInSentence,
+  savingMonthsLeft,
+  toIsoDate,
+} from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
 
 /** Leaves this screen; falls back to the list if there's nothing to go back to (e.g. web refresh). */
@@ -101,7 +107,7 @@ export default function GoalDetailScreen() {
   function confirmDeleteContribution(entry: Contribution) {
     confirm(
       'Delete this saving?',
-      `${money(entry.amount)} from ${formatRelativeDay(entry.date).toLowerCase()} will be removed from “${goal?.name}”.`,
+      `The ${money(entry.amount)} you saved ${relativeDayInSentence(entry.date)} will be removed from “${goal?.name}”.`,
       'Delete',
       () => deleteContribution(entry.id),
     );

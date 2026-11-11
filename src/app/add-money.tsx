@@ -15,6 +15,7 @@ import { useAppActions, useCurrency, useGoal, useGoalProgress } from '@/hooks/us
 import { addDays, todayIsoDate } from '@/utils/dates';
 import { formatMoney, parseMoneyInput } from '@/utils/money';
 import {
+  MONEY_INPUT_MAX_LENGTH,
   NOTE_MAX_LENGTH,
   validateContributionAmount,
   validateContributionDate,
@@ -115,6 +116,7 @@ export default function AddMoneyScreen() {
               prefix={currencySymbol}
               placeholder="e.g. 50"
               keyboardType="decimal-pad"
+              maxLength={MONEY_INPUT_MAX_LENGTH}
               autoFocus
             />
             {willComplete && (

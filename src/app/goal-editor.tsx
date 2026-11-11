@@ -15,12 +15,13 @@ import { DEFAULT_GOAL_EMOJI } from '@/constants/goal-emojis';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAppActions, useContributions, useCurrency, useGoal } from '@/hooks/use-app-data';
 import type { IsoDate } from '@/types/models';
-import { formatMonthYear } from '@/utils/dates';
+import { formatMonthYear, todayIsoDate } from '@/utils/dates';
 import { monthlyAmountNeeded, totalSaved } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
 import {
   amountToInputText,
   GOAL_NAME_MAX_LENGTH,
+  MONEY_INPUT_MAX_LENGTH,
   validateGoalName,
   validateGoalTarget,
   validateGoalTargetDate,
@@ -69,10 +70,15 @@ function GoalForm({ goalId }: { goalId?: string }) {
   const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? '';
   const alreadySaved = existing ? totalSaved(existing.id, contributions) : 0;
 
-  // Live hint: "That's about £68 a month" once there's a valid target and date.
+  // An existing goal whose date has already passed keeps that date until the
+  // user picks a new one, so they can still edit the name or amount.
+  const datePassed = targetDate !== null && targetDate < todayIsoDate();
+  const keepingOldDate = isEditing && targetDate === existing.targetDate;
+
+  // Live hint: "That's about £68 a month" once there's a valid target and a future date.
   const targetPreview = validateGoalTarget(targetText);
   const monthlyPreview =
-    targetPreview.ok && targetDate
+    targetPreview.ok && targetDate && !datePassed
       ? monthlyAmountNeeded(
           {
             id: existing?.id ?? 'draft',
@@ -89,7 +95,9 @@ function GoalForm({ goalId }: { goalId?: string }) {
   function handleSave() {
     const nameResult = validateGoalName(name);
     const targetResult = validateGoalTarget(targetText);
-    const dateResult = validateGoalTargetDate(targetDate);
+    const dateResult = keepingOldDate
+      ? ({ ok: true, value: targetDate } as const)
+      : validateGoalTargetDate(targetDate);
     setNameError(nameResult.ok ? null : nameResult.error);
     setTargetError(targetResult.ok ? null : targetResult.error);
     setDateError(dateResult.ok ? null : dateResult.error);
@@ -145,6 +153,7 @@ function GoalForm({ goalId }: { goalId?: string }) {
               prefix={currencySymbol}
               placeholder="e.g. 900"
               keyboardType="decimal-pad"
+              maxLength={MONEY_INPUT_MAX_LENGTH}
             />
             {isEditing && alreadySaved > 0 && (
               <ThemedText type="small" themeColor="textSecondary">
@@ -160,6 +169,12 @@ function GoalForm({ goalId }: { goalId?: string }) {
               }}
               error={dateError}
             />
+            {datePassed && targetDate && !dateError && (
+              <ThemedText type="small" themeColor="textSecondary">
+                The target date ({formatMonthYear(targetDate)}) has passed. Pick a new month with
+                the arrows, or switch the date off.
+              </ThemedText>
+            )}
             {monthlyPreview !== null && monthlyPreview > 0 && targetDate && (
               <ThemedView type="backgroundElement" style={styles.hint}>
                 <ThemedText type="small" themeColor="textSecondary">

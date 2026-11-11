@@ -13,7 +13,12 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppActions } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
 import type { CurrencyCode } from '@/types/models';
-import { NAME_MAX_LENGTH, validateIncome, validateName } from '@/utils/validation';
+import {
+  MONEY_INPUT_MAX_LENGTH,
+  NAME_MAX_LENGTH,
+  validateIncome,
+  validateName,
+} from '@/utils/validation';
 
 const STEP_COUNT = 3;
 
@@ -127,7 +132,7 @@ export default function OnboardingScreen() {
                 <ThemedText type="title" accessibilityRole="header">Your monthly income</ThemedText>
                 <ThemedText themeColor="textSecondary">
                   How much do you take home each month, after tax? We use this to suggest how much
-                  you could save.
+                  you could save. No income right now? Enter 0. That’s fine.
                 </ThemedText>
                 <TextField
                   label="Monthly income after tax"
@@ -140,6 +145,7 @@ export default function OnboardingScreen() {
                   prefix={currencySymbol}
                   placeholder="e.g. 1850"
                   keyboardType="decimal-pad"
+                  maxLength={MONEY_INPUT_MAX_LENGTH}
                   autoFocus
                   returnKeyType="done"
                   onSubmitEditing={handleNext}

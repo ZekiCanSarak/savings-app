@@ -14,6 +14,8 @@ import type {
 import { nowIsoTimestamp } from '@/utils/dates';
 import { createId } from '@/utils/id';
 
+import { sanitizeAppData } from './sanitize';
+
 /**
  * The app's single data store. Screens read and change data only through
  * this store (via the hooks in src/hooks/use-app-data.ts), never through
@@ -139,16 +141,12 @@ export const useAppStore = create<AppState>()(
         goals: s.goals,
         contributions: s.contributions,
       }),
-      // Fill in any fields missing from older saves with defaults.
-      merge: (persisted, current) => {
-        const saved = (persisted ?? {}) as Partial<AppData>;
-        return {
-          ...current,
-          ...saved,
-          profile: { ...current.profile, ...saved.profile },
-          reminders: { ...current.reminders, ...saved.reminders },
-        };
-      },
+      // Fill in fields missing from older saves with defaults, and repair anything
+      // invalid (see sanitize.ts), so a bad save can't crash the app.
+      merge: (persisted, current) => ({
+        ...current,
+        ...sanitizeAppData(persisted, initialData),
+      }),
       migrate: (persisted) => {
         // No older versions yet. When STORAGE_VERSION goes up, convert old data here.
         return persisted as AppData;

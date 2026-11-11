@@ -12,8 +12,11 @@ export const NAME_MAX_LENGTH = 40;
 export const GOAL_NAME_MAX_LENGTH = 40;
 
 /** Largest amounts we accept, in whole units (a sanity check against typos). */
-const MAX_MONTHLY_INCOME = 10_000_000;
-const MAX_GOAL_TARGET = 100_000_000;
+export const MAX_MONTHLY_INCOME = 10_000_000;
+export const MAX_GOAL_TARGET = 100_000_000;
+
+/** Longest text a money field accepts: enough for '100,000,000.00' plus a symbol. */
+export const MONEY_INPUT_MAX_LENGTH = 18;
 
 function validateText(
   text: string,
@@ -30,7 +33,12 @@ function validateText(
 /** Checks a money amount typed by the user. Returns minor units (pence) on success. */
 function validateAmount(
   text: string,
-  { emptyError, negativeError, max }: { emptyError: string; negativeError: string; max: number },
+  {
+    emptyError,
+    negativeError,
+    max,
+    allowZero = false,
+  }: { emptyError: string; negativeError: string; max: number; allowZero?: boolean },
 ): ValidationResult<number> {
   if (!text.trim()) return { ok: false, error: emptyError };
   if (text.includes('-')) return { ok: false, error: negativeError };
@@ -38,7 +46,9 @@ function validateAmount(
   if (amount === null) {
     return { ok: false, error: 'Please enter a number, like 900 or 899.99.' };
   }
-  if (amount === 0) return { ok: false, error: 'Please enter an amount greater than 0.' };
+  if (amount === 0 && !allowZero) {
+    return { ok: false, error: 'Please enter an amount greater than 0.' };
+  }
   if (amount > max * 100) {
     return { ok: false, error: 'That looks too high — please check the amount.' };
   }
@@ -54,6 +64,8 @@ export function validateIncome(text: string): ValidationResult<number> {
     emptyError: 'Please enter your monthly income.',
     negativeError: "Income can't be negative.",
     max: MAX_MONTHLY_INCOME,
+    // 0 is a real answer (between jobs, studying); the Budget tab handles it.
+    allowZero: true,
   });
 }
 

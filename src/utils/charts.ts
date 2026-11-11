@@ -66,7 +66,8 @@ export function savingsOverTime(
  * The finer list keeps headroom small (900 → axis to 1,200, not 2,000).
  */
 export function niceAxis(value: number, sections = 4): { max: number; step: number } {
-  if (value <= 0) return { max: sections, step: 1 };
+  // Axes are in whole units, so tiny targets still get whole-number steps (£1, £2…).
+  if (value <= sections) return { max: sections, step: 1 };
   const rawStep = value / sections;
   const magnitude = 10 ** Math.floor(Math.log10(rawStep));
   const step = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10].map((m) => m * magnitude).find((s) => s >= rawStep) ?? rawStep;
@@ -79,7 +80,8 @@ export function formatCompactMoney(wholeUnits: number, symbol: string): string {
   const trim = (n: number) => String(Math.round(n * 10) / 10);
   if (abs >= 1_000_000) return `${symbol}${trim(wholeUnits / 1_000_000)}M`;
   if (abs >= 1_000) return `${symbol}${trim(wholeUnits / 1_000)}K`;
-  return `${symbol}${Math.round(wholeUnits)}`;
+  // Keep a decimal for in-between steps like 2.5, rather than rounding to a wrong label.
+  return `${symbol}${trim(wholeUnits)}`;
 }
 
 export type GoalProgressRow = {

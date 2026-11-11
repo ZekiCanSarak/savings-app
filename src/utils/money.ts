@@ -54,8 +54,15 @@ export function formatMoney(
  * Returns null if it isn't a valid non-negative amount with at most 2 decimals.
  */
 export function parseMoneyInput(text: string): number | null {
-  const trimmed = text.trim().replace(/[\s'’]/g, '');
+  // Allow a currency symbol or code (e.g. '£', 'CHF') and grouping spaces/apostrophes,
+  // but reject anything else, so typos like '12abc34' or '1e5' aren't silently accepted.
+  const trimmed = text
+    .trim()
+    .replace(/^[A-Za-z]{3}(?=[\s\d.,])/, '')
+    .replace(/[£€$₹₺]/g, '')
+    .replace(/[\s'’]/g, '');
   if (trimmed.includes('-')) return null;
+  if (/[^\d.,]/.test(trimmed)) return null;
 
   let normalised = trimmed;
   const lastComma = trimmed.lastIndexOf(',');

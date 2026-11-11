@@ -10,10 +10,12 @@ import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { currencyInfo } from '@/constants/currencies';
-import { useAppActions, useProfile } from '@/hooks/use-app-data';
+import { useAppActions, useContributions, useGoals, useProfile } from '@/hooks/use-app-data';
+import { cancelAllReminders } from '@/services/notifications';
 import type { CurrencyCode } from '@/types/models';
 import {
   amountToInputText,
+  MONEY_INPUT_MAX_LENGTH,
   NAME_MAX_LENGTH,
   validateIncome,
   validateName,
@@ -21,6 +23,8 @@ import {
 
 export default function SettingsScreen() {
   const profile = useProfile();
+  const goals = useGoals();
+  const contributions = useContributions();
   const { updateProfile, resetAllData } = useAppActions();
 
   // Edits are kept here until the user taps Save.
@@ -51,16 +55,24 @@ export default function SettingsScreen() {
   }
 
   function handleReset() {
+    const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
     const message =
-      'This deletes your profile, goals and saved money from this phone. It can’t be undone.';
+      `This permanently deletes your profile, ${plural(goals.length, 'goal')} and ` +
+      `${plural(contributions.length, 'saving')} from this phone, and turns off reminders. ` +
+      'You’ll start again from the welcome screen. This can’t be undone.';
+    const reset = async () => {
+      // Cancel first: once data is reset, the reminder scheduler is no longer running.
+      await cancelAllReminders();
+      resetAllData();
+    };
     if (Platform.OS === 'web') {
       // Alert buttons don't work on web.
-      if (window.confirm(message)) resetAllData();
+      if (window.confirm(`Reset all data? ${message}`)) void reset();
       return;
     }
-    Alert.alert('Delete all data?', message, [
+    Alert.alert('Reset all data?', message, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete everything', style: 'destructive', onPress: resetAllData },
+      { text: 'Reset everything', style: 'destructive', onPress: () => void reset() },
     ]);
   }
 
@@ -97,6 +109,7 @@ export default function SettingsScreen() {
           error={incomeError}
           prefix={currencyInfo(currency).symbol}
           keyboardType="decimal-pad"
+          maxLength={MONEY_INPUT_MAX_LENGTH}
         />
         <AfterTaxExplainer />
       </Card>
@@ -124,12 +137,15 @@ export default function SettingsScreen() {
         <ReminderSettingsSection />
       </Card>
 
-      <Card title="Your data" subtitle="Everything is stored only on this phone." index={3}>
+      <Card
+        title="Your data"
+        subtitle="Everything is stored only on this phone. Resetting deletes it all and starts the app afresh."
+        index={3}>
         <Button
-          title="Delete all data"
+          title="Reset all data"
           variant="danger"
           onPress={handleReset}
-          accessibilityHint="Asks for confirmation first"
+          accessibilityHint="Asks for confirmation before deleting everything"
         />
       </Card>
     </Screen>

@@ -40,7 +40,10 @@ export function MonthPicker({ value, onChange, error }: MonthPickerProps) {
 
   function step(count: number) {
     if (!selected) return;
-    onChange(endOfMonthIsoDate(addMonths(selected, count)));
+    // A goal whose date has passed: the first step forward jumps straight to this month.
+    const inPast = compareYearMonth(selected, thisMonth) < 0;
+    const next = inPast && count > 0 ? thisMonth : addMonths(selected, count);
+    onChange(endOfMonthIsoDate(next));
   }
 
   return (

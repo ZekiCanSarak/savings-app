@@ -51,10 +51,17 @@ Update this list as features land.
 - `deleteGoal` also deletes that goal's contributions.
 - **Startup:** `src/app/_layout.tsx` keeps the splash screen up until saved data has loaded (`isReady`). If loading fails, the app starts with empty data instead of hanging. `isReady` is set one tick after loading finishes, because storage can answer synchronously.
 - **Web server rendering:** on web, Expo Router first renders pages in Node, where there's no `window`. The store uses a no-op storage there (`isServerRender` in `app-store.ts`). Any other browser-only API must be guarded the same way.
-- **Changing the saved shape:** bump `STORAGE_VERSION` in `app-store.ts` and convert old data in `migrate`, otherwise existing users' data breaks. Adding a new field with a default only needs the default in `initialData`, because `merge` fills it in.
+- **Changing the saved shape:** bump `STORAGE_VERSION` in `app-store.ts` and convert old data in `migrate`, otherwise existing users' data breaks. A new field also needs a default in `initialData` **and** a line in `src/storage/sanitize.ts`, because `merge` rebuilds the loaded data through `sanitizeAppData()` and drops any field it doesn't know about.
+- **Loaded data is always sanitised** (`sanitize.ts`): unknown currencies fall back to GBP, invalid amounts and dates are dropped, duplicate goals are removed, savings whose goal no longer exists are removed, and reminder settings are clamped to their ranges. Code can rely on the stored data being valid.
 - **Zustand selector rule:** a selector must return existing state, e.g. `(s) => s.goals`. Never build a new array or object inside a selector (`(s) => s.goals.filter(...)`): that re-renders forever. Select the raw data, then compute outside the selector, or wrap the selector in `useShallow`.
-- Amounts handed to the store must already be valid integer minor units. **Validate forms with `src/utils/validation.ts`.** Each validator returns `{ ok: true, value }` or `{ ok: false, error }`, and the screen shows `error` under the field. Money input rejects negatives and accepts a comma as the decimal point ('12,50'). `amountToInputText` turns a stored amount back into input text.
-- `resetAllData` also resets `onboardingComplete`, so the welcome flow shows again.
+- Amounts handed to the store must already be valid integer minor units. **Validate forms with `src/utils/validation.ts`.** Each validator returns `{ ok: true, value }` or `{ ok: false, error }`, and the screen shows `error` under the field.
+  - Money input rejects negatives and stray letters ('12abc34', '1e5'). It accepts a currency symbol or code, and a comma as the decimal point ('12,50').
+  - Limits: income up to `MAX_MONTHLY_INCOME`, goal targets and single savings up to `MAX_GOAL_TARGET`. Every money field sets `maxLength={MONEY_INPUT_MAX_LENGTH}`.
+  - **Income may be 0** (between jobs, studying). Goal targets and savings must be above 0. Anything that divides by income or the suggested savings must handle 0; the Budget tab shows a "No income right now" card instead of the split.
+  - `amountToInputText` turns a stored amount back into input text.
+- **Past target dates:** a goal can keep a date that has passed. Editing it doesn't force a new date unless the user changes it, and the month picker's first step forward jumps to the current month. Overdue goals show "Target date passed" in `danger`, rank first for reminders, and are excluded from "what your goals need per month".
+- **Reset all data** (Settings) calls `cancelAllReminders()` *before* `resetAllData()`, because the reminder scheduler stops running once onboarding resets. `resetAllData` also resets `onboardingComplete`, so the welcome flow shows again.
+- For a date in the middle of a sentence, use `relativeDayInSentence()` ('today', 'on 11 Nov 2026'). Don't lower-case `formatRelativeDay()`, which would give '11 nov 2026'.
 
 Expo APIs changed a lot in recent SDKs. Before using an Expo API, check the SDK 58 docs (see AGENTS.md) or the type definitions in `node_modules`, and don't rely on memory.
 
@@ -108,6 +115,7 @@ src/
     notifications.ts    The ONLY file that imports expo-notifications
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
+    sanitize.ts         Repairs loaded data so a bad save can't crash the app
   types/
     models.ts           UserProfile, SavingsGoal, Contribution, AppData
   utils/                Pure functions (no React) — easy to test
@@ -208,6 +216,6 @@ npx expo install <pkg>  # add a library at the SDK-compatible version
 
 Before committing: run `npx tsc --noEmit` and make sure the app still opens in Expo Go.
 
-Known pre-existing template issues (not from our code): the type error for `app-tabs.web.tsx` TabButton `ref` typing and one lint error in `src/hooks/use-color-scheme.web.ts`. On a fresh clone, `tsc` also reports `*.css` errors and doesn't check route names until `npx expo start` has run once, because that's what generates `expo-env.d.ts` and `.expo/types/`.
+`npx tsc --noEmit` and `npx eslint src` both pass with **zero** errors; keep it that way. On a fresh clone, `tsc` reports a `*.css` error and doesn't check route names until `npx expo start` has run once, because that's what generates `expo-env.d.ts` and `.expo/types/`.
 
-To see onboarding again while developing, use Settings → Delete all data.
+To see onboarding again while developing, use Settings → Reset all data.

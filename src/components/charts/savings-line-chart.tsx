@@ -9,7 +9,7 @@ import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Contribution, CurrencyCode, SavingsGoal } from '@/types/models';
 import { formatCompactMoney, niceAxis, savingsOverTime } from '@/utils/charts';
-import { formatRelativeDay } from '@/utils/dates';
+import { formatRelativeDay, relativeDayInSentence } from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
 
 type SavingsLineChartProps = {
@@ -78,9 +78,9 @@ export function SavingsLineChart({ goal, contributions, currency }: SavingsLineC
       : {}),
   }));
 
-  const summary = `Savings over time. ${money(0)} on ${formatRelativeDay(points[0].date)}, ${money(
+  const summary = `Savings over time. ${money(0)} ${relativeDayInSentence(points[0].date)}, ${money(
     latest.total,
-  )} ${formatRelativeDay(latest.date).toLowerCase()}. Target ${money(goal.targetAmount)}.`;
+  )} ${relativeDayInSentence(latest.date)}. Target ${money(goal.targetAmount)}.`;
 
   return (
     <View style={styles.wrapper}>
