@@ -27,10 +27,16 @@ export function formatMoney(
 
 /**
  * Turns what the user typed into minor units: '9.99' → 999, '£1,200' → 120000.
+ * A lone comma followed by 1–2 digits is treated as a decimal point ('12,50' → 1250),
+ * because many phone keyboards show ',' instead of '.'.
  * Returns null if it isn't a valid non-negative amount with at most 2 decimals.
  */
 export function parseMoneyInput(text: string): number | null {
-  const cleaned = text.replace(/[^\d.]/g, '');
+  const trimmed = text.trim();
+  if (trimmed.includes('-')) return null;
+  const decimalComma = /^[^.,]*\d,\d{1,2}$/.test(trimmed);
+  const normalised = decimalComma ? trimmed.replace(',', '.') : trimmed;
+  const cleaned = normalised.replace(/[^\d.]/g, '');
   if (!/^\d+(\.\d{0,2})?$|^\.\d{1,2}$/.test(cleaned)) return null;
   const [whole = '0', fraction = ''] = cleaned.split('.');
   return Number(whole || '0') * 100 + Number(fraction.padEnd(2, '0'));

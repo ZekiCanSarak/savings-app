@@ -46,6 +46,8 @@ export type Contribution = {
 
 /** Everything that gets saved to the device. */
 export type AppData = {
+  /** False until the user finishes the welcome flow. */
+  onboardingComplete: boolean;
   profile: UserProfile;
   goals: SavingsGoal[];
   contributions: Contribution[];

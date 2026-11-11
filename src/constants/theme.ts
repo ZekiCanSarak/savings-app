@@ -14,6 +14,12 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    /** Brand accent: primary buttons, selected items. */
+    tint: '#1F7A52',
+    /** Text/icons drawn on top of `tint`. */
+    onTint: '#ffffff',
+    danger: '#C62828',
+    border: '#D3D4DB',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +27,10 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    tint: '#3DD68C',
+    onTint: '#00210F',
+    danger: '#FF7A7A',
+    border: '#3A3F45',
   },
 } as const;
 

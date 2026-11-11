@@ -24,6 +24,8 @@ export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
 export type NewContribution = Omit<Contribution, 'id'>;
 
 type AppActions = {
+  /** Saves the profile from the welcome flow and marks it as done. */
+  completeOnboarding: (profile: UserProfile) => void;
   updateProfile: (changes: Partial<UserProfile>) => void;
 
   /** Returns the new goal's id. */
@@ -48,6 +50,7 @@ type AppState = AppData &
   };
 
 const initialData: AppData = {
+  onboardingComplete: false,
   profile: { name: '', currency: DEFAULT_CURRENCY, monthlyIncome: null },
   goals: [],
   contributions: [],
@@ -59,6 +62,7 @@ export const useAppStore = create<AppState>()(
       ...initialData,
       isReady: false,
 
+      completeOnboarding: (profile) => set({ profile, onboardingComplete: true }),
       updateProfile: (changes) => set((s) => ({ profile: { ...s.profile, ...changes } })),
 
       addGoal: (goal) => {
@@ -94,6 +98,7 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       // Only save the data itself — not actions or isReady.
       partialize: (s): AppData => ({
+        onboardingComplete: s.onboardingComplete,
         profile: s.profile,
         goals: s.goals,
         contributions: s.contributions,

@@ -21,6 +21,10 @@ export function useIsDataReady() {
   return useAppStore((s) => s.isReady);
 }
 
+export function useIsOnboarded() {
+  return useAppStore((s) => s.onboardingComplete);
+}
+
 export function useProfile() {
   return useAppStore((s) => s.profile);
 }
@@ -65,6 +69,7 @@ export function useGoalProgress(goalId: string) {
 export function useAppActions() {
   return useAppStore(
     useShallow((s) => ({
+      completeOnboarding: s.completeOnboarding,
       updateProfile: s.updateProfile,
       addGoal: s.addGoal,
       updateGoal: s.updateGoal,
