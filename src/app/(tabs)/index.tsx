@@ -5,14 +5,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AdviceNote } from '@/components/budget/advice-note';
 import { TipCard } from '@/components/budget/tip-card';
 import { GoalProgressBars } from '@/components/charts/goal-progress-bars';
+import { ReminderMessages } from '@/components/reminders/reminder-messages';
 import { SavingsSummary } from '@/components/home/savings-summary';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useContributions, useCurrency, useGoals, useProfile } from '@/hooks/use-app-data';
+import {
+  useAppActions,
+  useContributions,
+  useCurrency,
+  useGoals,
+  useProfile,
+  useReminderPromptDismissed,
+  useReminderSettings,
+} from '@/hooks/use-app-data';
+import { notificationsSupported } from '@/services/notifications';
 import { incomeLevel, tipOfTheDay } from '@/utils/budget';
 import { summariseGoals } from '@/utils/charts';
+import { reminderMessages } from '@/utils/reminders';
 
 export default function HomeScreen() {
   const profile = useProfile();
@@ -20,6 +31,13 @@ export default function HomeScreen() {
   const contributions = useContributions();
   const currency = useCurrency();
   const summary = summariseGoals(goals, contributions);
+  const reminders = reminderMessages(goals, contributions, currency, undefined, 2);
+  const reminderSettings = useReminderSettings();
+  const promptDismissed = useReminderPromptDismissed();
+  const { dismissReminderPrompt } = useAppActions();
+  // Suggest reminders once there's a goal to be reminded about. Never on first launch.
+  const showReminderPrompt =
+    notificationsSupported && goals.length > 0 && !reminderSettings.enabled && !promptDismissed;
   // Without an income we can't pick income-specific tips, so use the middle set.
   const tip = tipOfTheDay(
     profile.monthlyIncome === null ? 'middle' : incomeLevel(profile.monthlyIncome, currency),
@@ -68,6 +86,30 @@ export default function HomeScreen() {
                   }
                 />
               </ThemedView>
+              {reminders.length > 0 && (
+                <ThemedView type="backgroundElement" style={styles.card}>
+                  <ThemedText type="smallBold">Reminders</ThemedText>
+                  <ReminderMessages messages={reminders} />
+                </ThemedView>
+              )}
+
+              {showReminderPrompt && (
+                <ThemedView type="backgroundElement" style={styles.card}>
+                  <ThemedText type="smallBold">Want a gentle nudge? 🔔</ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    We can send you a weekly or monthly reminder like the ones above, so your goals
+                    stay on track.
+                  </ThemedText>
+                  <View style={styles.promptButtons}>
+                    <View style={styles.flex}>
+                      <Button title="No thanks" variant="secondary" onPress={dismissReminderPrompt} />
+                    </View>
+                    <View style={styles.flex}>
+                      <Button title="Set up" onPress={() => router.push('/reminder-setup')} />
+                    </View>
+                  </View>
+                </ThemedView>
+              )}
             </>
           )}
 
@@ -119,6 +161,13 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     gap: Spacing.half,
+  },
+  promptButtons: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  flex: {
+    flex: 1,
   },
   tipHeader: {
     flexDirection: 'row',

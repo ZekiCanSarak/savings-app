@@ -33,6 +33,14 @@ export function useCurrency() {
   return useAppStore((s) => s.profile.currency);
 }
 
+export function useReminderSettings() {
+  return useAppStore((s) => s.reminders);
+}
+
+export function useReminderPromptDismissed() {
+  return useAppStore((s) => s.reminderPromptDismissed);
+}
+
 export function useGoals() {
   return useAppStore((s) => s.goals);
 }
@@ -77,6 +85,8 @@ export function useAppActions() {
       addContribution: s.addContribution,
       updateContribution: s.updateContribution,
       deleteContribution: s.deleteContribution,
+      updateReminders: s.updateReminders,
+      dismissReminderPrompt: s.dismissReminderPrompt,
       resetAllData: s.resetAllData,
     })),
   );

@@ -4,7 +4,13 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
-import type { AppData, Contribution, SavingsGoal, UserProfile } from '@/types/models';
+import type {
+  AppData,
+  Contribution,
+  ReminderSettings,
+  SavingsGoal,
+  UserProfile,
+} from '@/types/models';
 import { nowIsoTimestamp } from '@/utils/dates';
 import { createId } from '@/utils/id';
 
@@ -52,6 +58,9 @@ type AppActions = {
   updateContribution: (id: string, changes: Partial<NewContribution>) => void;
   deleteContribution: (id: string) => void;
 
+  updateReminders: (changes: Partial<ReminderSettings>) => void;
+  dismissReminderPrompt: () => void;
+
   /** Wipes everything back to a fresh install. */
   resetAllData: () => void;
 };
@@ -65,6 +74,15 @@ type AppState = AppData &
 const initialData: AppData = {
   onboardingComplete: false,
   profile: { name: '', currency: DEFAULT_CURRENCY, monthlyIncome: null },
+  reminders: {
+    enabled: false,
+    frequency: 'weekly',
+    weekday: 1,
+    dayOfMonth: 1,
+    hour: 18,
+    minute: 0,
+  },
+  reminderPromptDismissed: false,
   goals: [],
   contributions: [],
 };
@@ -103,6 +121,9 @@ export const useAppStore = create<AppState>()(
       deleteContribution: (id) =>
         set((s) => ({ contributions: s.contributions.filter((c) => c.id !== id) })),
 
+      updateReminders: (changes) => set((s) => ({ reminders: { ...s.reminders, ...changes } })),
+      dismissReminderPrompt: () => set({ reminderPromptDismissed: true }),
+
       resetAllData: () => set(initialData),
     }),
     {
@@ -113,6 +134,8 @@ export const useAppStore = create<AppState>()(
       partialize: (s): AppData => ({
         onboardingComplete: s.onboardingComplete,
         profile: s.profile,
+        reminders: s.reminders,
+        reminderPromptDismissed: s.reminderPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
       }),
@@ -123,6 +146,7 @@ export const useAppStore = create<AppState>()(
           ...current,
           ...saved,
           profile: { ...current.profile, ...saved.profile },
+          reminders: { ...current.reminders, ...saved.reminders },
         };
       },
       migrate: (persisted) => {

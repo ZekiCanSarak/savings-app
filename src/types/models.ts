@@ -44,11 +44,30 @@ export type Contribution = {
   note?: string;
 };
 
+export type ReminderFrequency = 'weekly' | 'monthly';
+
+export type ReminderSettings = {
+  /** Only true once the user has turned reminders on AND allowed notifications. */
+  enabled: boolean;
+  frequency: ReminderFrequency;
+  /** For weekly reminders: 1 = Sunday … 7 = Saturday (expo-notifications' numbering). */
+  weekday: number;
+  /** For monthly reminders: 1–28, so every month has that day. */
+  dayOfMonth: number;
+  /** 0–23 */
+  hour: number;
+  /** 0–59 */
+  minute: number;
+};
+
 /** Everything that gets saved to the device. */
 export type AppData = {
   /** False until the user finishes the welcome flow. */
   onboardingComplete: boolean;
   profile: UserProfile;
+  reminders: ReminderSettings;
+  /** The user tapped "No thanks" on the Home reminders suggestion. */
+  reminderPromptDismissed: boolean;
   goals: SavingsGoal[];
   contributions: Contribution[];
 };

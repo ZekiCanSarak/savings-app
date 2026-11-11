@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
 import { CurrencyPicker } from '@/components/profile/currency-picker';
+import { ReminderSettingsSection } from '@/components/reminders/reminder-settings';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -128,6 +129,11 @@ export default function SettingsScreen() {
                 Saved ✓
               </ThemedText>
             )}
+
+            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
+              REMINDERS
+            </ThemedText>
+            <ReminderSettingsSection />
 
             <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionTitle}>
               DATA
