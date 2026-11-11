@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import type { AppData, Contribution, SavingsGoal, UserProfile } from '@/types/models';
@@ -15,6 +16,18 @@ import { createId } from '@/utils/id';
  * `persist` saves AppData to AsyncStorage on every change and loads it back
  * when the app starts.
  */
+
+/**
+ * On web, Expo Router first renders pages on the server (Node), where there is
+ * no `window`/localStorage, and AsyncStorage throws. Use a do-nothing storage
+ * there; the browser then loads the real data when the page starts.
+ */
+const isServerRender = Platform.OS === 'web' && typeof window === 'undefined';
+const noopStorage: StateStorage = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
 const STORAGE_VERSION = 1;
@@ -95,7 +108,7 @@ export const useAppStore = create<AppState>()(
     {
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
-      storage: createJSONStorage(() => AsyncStorage),
+      storage: createJSONStorage(() => (isServerRender ? noopStorage : AsyncStorage)),
       // Only save the data itself — not actions or isReady.
       partialize: (s): AppData => ({
         onboardingComplete: s.onboardingComplete,
@@ -118,9 +131,11 @@ export const useAppStore = create<AppState>()(
       },
       // Runs after loading finishes — also when it fails, so the app never
       // gets stuck on the splash screen (it starts with empty data instead).
+      // Deferred by a tick: if storage answers synchronously (web server render),
+      // this runs before `useAppStore` itself has been created.
       onRehydrateStorage: () => (_state, error) => {
         if (error) console.warn('Could not load saved data', error);
-        useAppStore.setState({ isReady: true });
+        void Promise.resolve().then(() => useAppStore.setState({ isReady: true }));
       },
     },
   ),

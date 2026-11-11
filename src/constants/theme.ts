@@ -20,6 +20,12 @@ export const Colors = {
     onTint: '#ffffff',
     danger: '#C62828',
     border: '#D3D4DB',
+    /** Chart marks (lines, bars). Validated against `backgroundElement` (chart cards). */
+    chart: '#1F7A52',
+    /** Unfilled part of a progress bar: a lighter step of the chart green. */
+    chartTrack: '#D2E6DA',
+    /** Hairline gridlines and chart baselines. */
+    chartGrid: '#DADBE1',
   },
   dark: {
     text: '#ffffff',
@@ -31,6 +37,9 @@ export const Colors = {
     onTint: '#00210F',
     danger: '#FF7A7A',
     border: '#3A3F45',
+    chart: '#27AE6C',
+    chartTrack: '#1F3A2C',
+    chartGrid: '#33363B',
   },
 } as const;
 

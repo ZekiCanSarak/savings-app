@@ -23,7 +23,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Settings: edit name, currency, monthly income; delete all data
 - [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
 - [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
-- [ ] Home: summary + charts
+- [x] Charts: Home summary (total saved, still to save, goals reached) + ranked progress bars; goal detail line chart of saved over time with dashed target line
 - [ ] Budget: suggestions + tips
 - [ ] Reminders (local notifications)
 
@@ -37,7 +37,8 @@ Update this list as features land.
 - Styling: React Native `StyleSheet` plus the theme tokens in `src/constants/theme.ts`. Light and dark mode are both supported.
 - React Compiler and typed routes are enabled (`app.json` → `experiments`).
 - **State + storage:** Zustand (`zustand`) with its `persist` middleware, which saves to `@react-native-async-storage/async-storage`. See "Data layer" below.
-- Planned, not installed yet (choose and confirm when the feature is built): charts, and `expo-notifications` for local reminders.
+- **Charts:** `react-native-gifted-charts`, which draws with `react-native-svg` and uses `expo-linear-gradient` for area fills. Both are in Expo Go, and it renders the same on iOS, Android and web. We chose it over `victory-native` (Skia-based), which would need fonts loaded for axis labels and CanvasKit set up for web: more setup for no benefit at our data sizes. Simple bars (like Home's progress-by-goal) are plain `View`s, which give full control over labels and accessibility.
+- Planned, not installed yet: `expo-notifications` for local reminders.
 
 ## Data layer
 
@@ -47,7 +48,8 @@ Update this list as features land.
 - **Calculations** live in `src/utils/goals.ts` (`totalSaved`, `amountRemaining`, `percentComplete`, `monthlyAmountNeeded`). They're pure functions, and the hooks call them.
 - **Saved-so-far is never stored.** It's always calculated from contributions, which avoids the two disagreeing.
 - `deleteGoal` also deletes that goal's contributions.
-- **Startup:** `src/app/_layout.tsx` keeps the splash screen up until saved data has loaded (`isReady`). If loading fails, the app starts with empty data instead of hanging.
+- **Startup:** `src/app/_layout.tsx` keeps the splash screen up until saved data has loaded (`isReady`). If loading fails, the app starts with empty data instead of hanging. `isReady` is set one tick after loading finishes, because storage can answer synchronously.
+- **Web server rendering:** on web, Expo Router first renders pages in Node, where there's no `window`. The store uses a no-op storage there (`isServerRender` in `app-store.ts`). Any other browser-only API must be guarded the same way.
 - **Changing the saved shape:** bump `STORAGE_VERSION` in `app-store.ts` and convert old data in `migrate`, otherwise existing users' data breaks. Adding a new field with a default only needs the default in `initialData`, because `merge` fills it in.
 - **Zustand selector rule:** a selector must return existing state, e.g. `(s) => s.goals`. Never build a new array or object inside a selector (`(s) => s.goals.filter(...)`): that re-renders forever. Select the raw data, then compute outside the selector, or wrap the selector in `useShallow`.
 - Amounts handed to the store must already be valid integer minor units. **Validate forms with `src/utils/validation.ts`.** Each validator returns `{ ok: true, value }` or `{ ok: false, error }`, and the screen shows `error` under the field. Money input rejects negatives and accepts a comma as the decimal point ('12,50'). `amountToInputText` turns a stored amount back into input text.
@@ -79,6 +81,8 @@ src/
     profile/            currency-picker.tsx, after-tax-explainer.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
+    charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
+    home/               savings-summary.tsx (hero total + stat tiles)
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
     themed-text.tsx     Text that follows light/dark theme
@@ -97,6 +101,7 @@ src/
     models.ts           UserProfile, SavingsGoal, Contribution, AppData
   utils/                Pure functions (no React) — easy to test
     goals.ts            Saved / remaining / % / per-month calculations
+    charts.ts           Chart data: savingsOverTime, niceAxis, formatCompactMoney, summariseGoals
     money.ts            formatMoney, parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
@@ -116,6 +121,16 @@ Navigation patterns:
 - Set a page's header title from inside it with `<Stack.Screen options={{ title }} />`.
 - Goal target dates are months: the month picker stores the last day of the chosen month.
 - Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by deleting the entry (no editing, and no negative amounts).
+
+Charts (follow these for every new chart):
+- **Pick the form first.** One headline number → a stat tile or hero figure, not a chart. Comparing goals → ranked horizontal bars on one shared scale, most complete first. Change over time → a line. Avoid donuts and pies, and never use two y-axes.
+- **Colour:** chart marks use the `chart` theme token. It's a separate token from `tint` because the dark-mode green had to be stepped down to pass the chart colour checks. It was validated against `backgroundElement`, the card colour charts sit on. A single series uses one colour, with no per-bar colours and no legend box (the card title names it). Text is never drawn in the series colour; it uses `text` / `textSecondary`. The unfilled part of a bar uses `chartTrack`, and gridlines use `chartGrid`. Any new chart colour needs light and dark values checked with the dataviz palette validator.
+- **Marks:** 2px lines; area fill at about 10% opacity; end dot of at least 8px with a 2px ring in the card colour; bars at most 24px thick, square at the baseline and 4px-rounded at the data end; solid 1px gridlines (dashed only for the target line); no y-axis line.
+- **Money in charts:** the chart library works in whole units (pounds), so divide minor units by 100. Axis labels use `formatCompactMoney` (£1.5K) and `niceAxis` for tidy steps. Tooltips and labels use `formatMoney`.
+- **Time:** gifted-charts spaces points evenly, so `savingsOverTime` resamples onto evenly spaced dates to keep time to scale. Don't plot one point per contribution.
+- **Empty data:** every chart has an empty state that explains what will appear and how to make it appear.
+- **Accessibility:** give the chart container `accessible`, `accessibilityRole="image"` and a summary `accessibilityLabel`. Every value must also be readable without the chart: the history list on goal detail, and the labelled rows on Home. Tooltips add to that, but are never the only way to read a value. Turn off `isAnimated` when `useReducedMotion()` is true.
+- Measure the width with `onLayout`, and only render the chart once the width is known.
 
 Animation & effects:
 - Use `react-native-reanimated` (already installed). Use `.get()` / `.set()` on shared values rather than `.value`, because the React Compiler is on.

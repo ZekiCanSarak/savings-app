@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
 import { ThemedText } from '@/components/themed-text';
@@ -13,6 +14,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import {
   useAppActions,
+  useContributions,
   useCurrency,
   useGoal,
   useGoalContributions,
@@ -45,6 +47,7 @@ export default function GoalDetailScreen() {
   const goal = useGoal(id);
   const progress = useGoalProgress(id);
   const history = useGoalContributions(id);
+  const contributions = useContributions();
   const currency = useCurrency();
   const { deleteGoal, deleteContribution } = useAppActions();
   const reduceMotion = useReducedMotion();
@@ -169,6 +172,11 @@ export default function GoalDetailScreen() {
             )}
           </ThemedView>
         )}
+
+        <ThemedView type="backgroundElement" style={styles.card}>
+          <ThemedText type="smallBold">Saved over time</ThemedText>
+          <SavingsLineChart goal={goal} contributions={contributions} currency={currency} />
+        </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.card}>
           <ThemedText type="smallBold">Savings history</ThemedText>
