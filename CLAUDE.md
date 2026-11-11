@@ -25,7 +25,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
 - [x] Charts: Home summary (total saved, still to save, goals reached) + ranked progress bars; goal detail line chart of saved over time with dashed target line
 - [x] Budget: 50/30/20 split chart, suggested vs saved this month, what goals need per month, income-based tips; tip of the day on Home; "not financial advice" note
-- [ ] Reminders (local notifications)
+- [x] Reminders: local notifications (weekly/monthly at a chosen time), explained before asking permission, about the goal furthest behind schedule; rescheduled on every data change; same messages on Home
 
 Update this list as features land.
 
@@ -38,7 +38,7 @@ Update this list as features land.
 - React Compiler and typed routes are enabled (`app.json` → `experiments`).
 - **State + storage:** Zustand (`zustand`) with its `persist` middleware, which saves to `@react-native-async-storage/async-storage`. See "Data layer" below.
 - **Charts:** `react-native-gifted-charts`, which draws with `react-native-svg` and uses `expo-linear-gradient` for area fills. Both are in Expo Go, and it renders the same on iOS, Android and web. We chose it over `victory-native` (Skia-based), which would need fonts loaded for axis labels and CanvasKit set up for web: more setup for no benefit at our data sizes. Simple bars (like Home's progress-by-goal) are plain `View`s, which give full control over labels and accessibility.
-- Planned, not installed yet: `expo-notifications` for local reminders.
+- **Notifications:** `expo-notifications`, used for **local** scheduled notifications only. There's no server and no push tokens: remote push doesn't work in Expo Go on Android since SDK 53, while local notifications do. Don't call push-token APIs (`getExpoPushTokenAsync`, `getDevicePushTokenAsync`), because they throw in Expo Go on Android. The two yellow "not fully supported in Expo Go" warnings at startup are expected.
 
 ## Data layer
 
@@ -66,6 +66,7 @@ src/
     onboarding.tsx      First-launch welcome flow (3 steps)
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
+    reminder-setup.tsx  Modal: explains reminders, then asks for notification permission
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -77,12 +78,14 @@ src/
       settings.tsx      Settings tab
   components/           Reusable UI pieces
     ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx,
-                        day-stepper.tsx, confetti.tsx
+                        day-stepper.tsx, confetti.tsx, value-stepper.tsx, choice-chips.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
     budget/             budget-split-chart.tsx, tip-card.tsx, advice-note.tsx
+    reminders/          reminder-settings.tsx (Settings section), reminder-messages.tsx (Home),
+                        reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
     home/               savings-summary.tsx (hero total + stat tiles)
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
@@ -96,7 +99,11 @@ src/
     goal-emojis.ts      Emojis offered for goals
   hooks/
     use-app-data.ts     Hooks screens use to read/change app data
+    use-reminder-scheduler.ts   Reschedules the reminder when data changes
+    use-notification-permission.ts  Current permission, re-checked on foreground
     use-theme.ts        Current theme colours
+  services/
+    notifications.ts    The ONLY file that imports expo-notifications
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
   types/
@@ -105,6 +112,7 @@ src/
     goals.ts            Saved / remaining / % / per-month calculations
     charts.ts           Chart data: savingsOverTime, niceAxis, formatCompactMoney, summariseGoals
     budget.ts           budgetSplit, savedThisMonth, incomeLevel, tipsFor, tipOfTheDay, labelColourOn
+    reminders.ts        behindSchedule, goalsNeedingAttention, reminder messages, describeSchedule
     money.ts            formatMoney, parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
@@ -143,6 +151,13 @@ Budget & tips:
 - Income levels (`lower` / `middle` / `higher`) use rough monthly take-home thresholds per currency in `INCOME_BANDS`. A new currency must be added there too.
 - The tip of the day is picked from the date, so it stays the same all day and cycles through every matching tip before repeating.
 - **Any screen that suggests amounts or gives tips shows `<AdviceNote />`** (use `short` in small spaces). It says this is general guidance, not professional financial advice.
+
+Reminders & notifications:
+- **Never ask for notification permission on first launch, or without explaining first.** Always send the user to `/reminder-setup`, which explains reminders and shows a real preview, then calls `requestPermission()`. If permission was denied, offer `Linking.openSettings()` instead of asking again.
+- Only `src/services/notifications.ts` imports `expo-notifications`. It creates the Android channel before asking (Android 13+ needs that), uses one fixed id (`savings-reminder`) so scheduling again replaces the old reminder, and does nothing on web.
+- A scheduled notification's text is fixed when it's scheduled. `useReminderScheduler` (mounted in the root layout after onboarding) reschedules, debounced, whenever goals, contributions, currency or reminder settings change, and each time the app comes to the foreground. Don't schedule from screens.
+- "Furthest behind schedule" means saving evenly from the goal's creation to its target date (`behindSchedule`). Overdue goals rank first, then dated goals furthest behind, then undated goals with the least progress. Home's Reminders card uses the same `reminderMessages`, so the app and the notifications always agree.
+- Weekdays use expo's numbering, 1 = Sunday. Monthly days are limited to 1–28. Reminder settings save straight away (no Save button). Tapping a notification opens its goal (via `data.goalId`).
 
 Animation & effects:
 - Use `react-native-reanimated` (already installed). Use `.get()` / `.set()` on shared values rather than `.value`, because the React Compiler is on.
