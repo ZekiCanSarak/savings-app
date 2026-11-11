@@ -26,6 +26,13 @@ export const Colors = {
     chartTrack: '#D2E6DA',
     /** Hairline gridlines and chart baselines. */
     chartGrid: '#DADBE1',
+    /**
+     * 50/30/20 split. Order needs → wants → savings is validated as a set
+     * (adjacent colour-blind separation passes in both modes). Don't reorder.
+     */
+    budgetNeeds: '#EB6834',
+    budgetWants: '#2A78D6',
+    budgetSavings: '#1F7A52',
   },
   dark: {
     text: '#ffffff',
@@ -40,6 +47,9 @@ export const Colors = {
     chart: '#27AE6C',
     chartTrack: '#1F3A2C',
     chartGrid: '#33363B',
+    budgetNeeds: '#D95926',
+    budgetWants: '#3987E5',
+    budgetSavings: '#27AE6C',
   },
 } as const;
 

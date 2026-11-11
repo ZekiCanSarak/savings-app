@@ -1,7 +1,9 @@
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AdviceNote } from '@/components/budget/advice-note';
+import { TipCard } from '@/components/budget/tip-card';
 import { GoalProgressBars } from '@/components/charts/goal-progress-bars';
 import { SavingsSummary } from '@/components/home/savings-summary';
 import { ThemedText } from '@/components/themed-text';
@@ -9,6 +11,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
 import { useContributions, useCurrency, useGoals, useProfile } from '@/hooks/use-app-data';
+import { incomeLevel, tipOfTheDay } from '@/utils/budget';
 import { summariseGoals } from '@/utils/charts';
 
 export default function HomeScreen() {
@@ -17,6 +20,10 @@ export default function HomeScreen() {
   const contributions = useContributions();
   const currency = useCurrency();
   const summary = summariseGoals(goals, contributions);
+  // Without an income we can't pick income-specific tips, so use the middle set.
+  const tip = tipOfTheDay(
+    profile.monthlyIncome === null ? 'middle' : incomeLevel(profile.monthlyIncome, currency),
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -63,6 +70,26 @@ export default function HomeScreen() {
               </ThemedView>
             </>
           )}
+
+          {tip && (
+            <ThemedView type="backgroundElement" style={styles.card}>
+              <View style={styles.tipHeader}>
+                <ThemedText type="smallBold">Tip of the day</ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="See more tips on the Budget tab"
+                  onPress={() => router.navigate('/budget')}
+                  hitSlop={10}
+                  style={({ pressed }) => pressed && styles.pressed}>
+                  <ThemedText type="small" themeColor="tint">
+                    More tips
+                  </ThemedText>
+                </Pressable>
+              </View>
+              <TipCard tip={tip} />
+              <AdviceNote short />
+            </ThemedView>
+          )}
         </ScrollView>
       </SafeAreaView>
     </ThemedView>
@@ -92,6 +119,14 @@ const styles = StyleSheet.create({
   },
   cardHeader: {
     gap: Spacing.half,
+  },
+  tipHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pressed: {
+    opacity: 0.6,
   },
   emptyEmoji: {
     fontSize: 48,

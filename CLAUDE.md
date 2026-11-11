@@ -24,7 +24,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
 - [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
 - [x] Charts: Home summary (total saved, still to save, goals reached) + ranked progress bars; goal detail line chart of saved over time with dashed target line
-- [ ] Budget: suggestions + tips
+- [x] Budget: 50/30/20 split chart, suggested vs saved this month, what goals need per month, income-based tips; tip of the day on Home; "not financial advice" note
 - [ ] Reminders (local notifications)
 
 Update this list as features land.
@@ -73,7 +73,7 @@ src/
         _layout.tsx     Stack: list → detail
         index.tsx       Goal list + empty state
         [id].tsx        Goal detail: progress, add money, monthly plan, history, edit, delete, celebration
-      budget.tsx        Budget tab
+      budget.tsx        Budget tab: split, this month's savings, tips
       settings.tsx      Settings tab
   components/           Reusable UI pieces
     ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx,
@@ -82,12 +82,14 @@ src/
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
+    budget/             budget-split-chart.tsx, tip-card.tsx, advice-note.tsx
     home/               savings-summary.tsx (hero total + stat tiles)
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
     themed-text.tsx     Text that follows light/dark theme
     themed-view.tsx     View that follows light/dark theme
-    placeholder-screen.tsx  Temporary "coming soon" screen
+  data/
+    tips.ts             Saving tips + income levels per currency (edit freely)
   constants/
     theme.ts            Colours, spacing, fonts
     currencies.ts       Currencies the user can choose
@@ -102,6 +104,7 @@ src/
   utils/                Pure functions (no React) — easy to test
     goals.ts            Saved / remaining / % / per-month calculations
     charts.ts           Chart data: savingsOverTime, niceAxis, formatCompactMoney, summariseGoals
+    budget.ts           budgetSplit, savedThisMonth, incomeLevel, tipsFor, tipOfTheDay, labelColourOn
     money.ts            formatMoney, parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
@@ -131,6 +134,15 @@ Charts (follow these for every new chart):
 - **Empty data:** every chart has an empty state that explains what will appear and how to make it appear.
 - **Accessibility:** give the chart container `accessible`, `accessibilityRole="image"` and a summary `accessibilityLabel`. Every value must also be readable without the chart: the history list on goal detail, and the labelled rows on Home. Tooltips add to that, but are never the only way to read a value. Turn off `isAnimated` when `useReducedMotion()` is true.
 - Measure the width with `onLayout`, and only render the chart once the width is known.
+
+- **Several series:** when a chart needs several colours (like the 50/30/20 split), use fixed theme tokens (`budgetNeeds` / `budgetWants` / `budgetSavings`) whose order was checked together with the validator. Don't reorder or reuse them for other meanings. A label printed inside a coloured block uses `labelColourOn(hex)` (white or near-black). Every coloured part also gets a text label, so colour is never the only cue.
+
+Budget & tips:
+- The 50/30/20 amounts come from `budgetSplit()`, which always adds up exactly to the income (any rounding goes to needs). "Saved this month" means contributions dated in the current calendar month, across all goals.
+- **Tips live in `src/data/tips.ts`.** To add one, copy a block, give it a new unique `id` and set `for: [...]` income levels. Never reuse or rename ids, because they decide which tip shows on which day. Tips stay general: no specific products, providers, tax rules or amounts in a particular currency.
+- Income levels (`lower` / `middle` / `higher`) use rough monthly take-home thresholds per currency in `INCOME_BANDS`. A new currency must be added there too.
+- The tip of the day is picked from the date, so it stays the same all day and cycles through every matching tip before repeating.
+- **Any screen that suggests amounts or gives tips shows `<AdviceNote />`** (use `short` in small spaces). It says this is general guidance, not professional financial advice.
 
 Animation & effects:
 - Use `react-native-reanimated` (already installed). Use `.get()` / `.set()` on shared values rather than `.value`, because the React Compiler is on.
