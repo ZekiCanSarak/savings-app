@@ -12,7 +12,7 @@ type TipCardProps = {
 export function TipCard({ tip }: TipCardProps) {
   return (
     <View style={styles.row} accessible accessibilityLabel={`Tip: ${tip.title}. ${tip.body}`}>
-      <ThemedText style={styles.icon}>💡</ThemedText>
+      <ThemedText type="emoji" style={styles.icon} importantForAccessibility="no">💡</ThemedText>
       <View style={styles.text}>
         <ThemedText type="smallBold">{tip.title}</ThemedText>
         <ThemedText type="small" themeColor="textSecondary">
@@ -30,8 +30,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   icon: {
-    fontSize: 20,
-    lineHeight: 24,
+    width: 32,
   },
   text: {
     flex: 1,

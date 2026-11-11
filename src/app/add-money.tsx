@@ -1,12 +1,13 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { DayStepper } from '@/components/ui/day-stepper';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { TextField } from '@/components/ui/text-field';
 import { CURRENCIES } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
@@ -83,27 +84,17 @@ export default function AddMoneyScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.topBar}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={close}
-            hitSlop={12}
-            style={({ pressed }) => [styles.topBarSide, pressed && styles.pressed]}>
-            <ThemedText themeColor="tint">Cancel</ThemedText>
-          </Pressable>
-          <ThemedText type="smallBold" style={styles.topBarTitle} accessibilityRole="header">
-            Add money
-          </ThemedText>
-          <View style={styles.topBarSide} />
-        </View>
+        <ModalHeader title="Add money" onClose={close} />
 
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.goalSummary}>
-              <ThemedText style={styles.goalEmoji}>{goal.emoji}</ThemedText>
-              <ThemedText type="smallBold" style={styles.center}>
+              <ThemedText type="emojiLarge" importantForAccessibility="no" accessibilityElementsHidden>
+                {goal.emoji}
+              </ThemedText>
+              <ThemedText type="heading" style={styles.center}>
                 {goal.name}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
@@ -191,25 +182,6 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    minHeight: 52,
-  },
-  topBarSide: {
-    width: 72,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  topBarTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
   content: {
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
@@ -219,10 +191,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.half,
     marginBottom: Spacing.two,
-  },
-  goalEmoji: {
-    fontSize: 48,
-    lineHeight: 58,
   },
   center: {
     textAlign: 'center',

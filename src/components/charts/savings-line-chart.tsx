@@ -5,7 +5,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
 import { CURRENCIES } from '@/constants/currencies';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Contribution, CurrencyCode, SavingsGoal } from '@/types/models';
 import { formatCompactMoney, niceAxis, savingsOverTime } from '@/utils/charts';
@@ -43,7 +43,7 @@ export function SavingsLineChart({ goal, contributions, currency }: SavingsLineC
   if (points.length === 0) {
     return (
       <View style={[styles.empty, { borderColor: theme.chartGrid }]}>
-        <ThemedText style={styles.emptyIcon}>📈</ThemedText>
+        <ThemedText type="emoji" importantForAccessibility="no">📈</ThemedText>
         <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
           Your progress chart will appear here once you add money.
         </ThemedText>
@@ -206,18 +206,14 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
     paddingVertical: Spacing.four,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     borderWidth: 1,
-  },
-  emptyIcon: {
-    fontSize: 32,
-    lineHeight: 40,
   },
   center: {
     textAlign: 'center',
   },
   axisText: {
-    fontSize: 11,
+    fontSize: 12,
   },
   dot: {
     width: DOT_SIZE,
@@ -228,7 +224,7 @@ const styles = StyleSheet.create({
   tooltip: {
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.small,
     borderWidth: 1,
   },
   dateRow: {

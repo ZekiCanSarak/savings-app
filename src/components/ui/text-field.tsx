@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type TextFieldProps = Omit<TextInputProps, 'style'> & {
@@ -21,7 +21,7 @@ export function TextField({ label, error, prefix, ...inputProps }: TextFieldProp
       <View
         style={[
           styles.inputRow,
-          { backgroundColor: theme.backgroundElement, borderColor: error ? theme.danger : theme.border },
+          { backgroundColor: theme.background, borderColor: error ? theme.danger : theme.border },
         ]}>
         {prefix ? (
           <ThemedText themeColor="textSecondary" style={styles.prefix}>
@@ -52,9 +52,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
+    borderCurve: 'continuous',
     paddingHorizontal: Spacing.three,
-    minHeight: 50,
+    minHeight: 52,
   },
   prefix: {
     marginRight: Spacing.one,

@@ -24,7 +24,7 @@ export function ReminderMessages({ messages }: ReminderMessagesProps) {
             router.push({ pathname: '/goals/[id]', params: { id: message.goalId } })
           }
           style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
-          <ThemedText style={styles.icon}>🔔</ThemedText>
+          <ThemedText type="emoji" style={styles.icon} importantForAccessibility="no">🔔</ThemedText>
           <View style={styles.text}>
             <ThemedText type="smallBold">{message.title}</ThemedText>
             <ThemedText type="small" themeColor="textSecondary">
@@ -51,8 +51,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   icon: {
-    fontSize: 18,
-    lineHeight: 22,
+    width: 32,
   },
   text: {
     flex: 1,

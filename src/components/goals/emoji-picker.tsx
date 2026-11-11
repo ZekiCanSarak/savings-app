@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { GOAL_EMOJIS } from '@/constants/goal-emojis';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type EmojiPickerProps = {
@@ -30,8 +30,8 @@ export function EmojiPicker({ value, onChange }: EmojiPickerProps) {
               style={({ pressed }) => [
                 styles.cell,
                 {
-                  backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
-                  borderColor: selected ? theme.tint : 'transparent',
+                  backgroundColor: selected ? theme.backgroundSelected : theme.background,
+                  borderColor: selected ? theme.tint : theme.border,
                 },
                 pressed && styles.pressed,
               ]}>
@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
   cell: {
     width: 48,
     height: 48,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',

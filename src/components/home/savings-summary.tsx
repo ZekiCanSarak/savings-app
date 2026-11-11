@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { Card } from '@/components/ui/card';
 import { Spacing } from '@/constants/theme';
 import type { CurrencyCode } from '@/types/models';
 import type { GoalsSummary } from '@/utils/charts';
@@ -15,19 +15,22 @@ type SavingsSummaryProps = {
 
 /** Headline numbers: total saved (the one big figure), then two smaller stat tiles. */
 export function SavingsSummary({ summary, goalCount, currency }: SavingsSummaryProps) {
+  const total = formatMoney(summary.totalSaved, currency);
   return (
     <View style={styles.wrapper}>
-      <ThemedView type="backgroundElement" style={styles.hero}>
-        <ThemedText type="small" themeColor="textSecondary">
-          Total saved
-        </ThemedText>
-        <ThemedText type="title" adjustsFontSizeToFit numberOfLines={1}>
-          {formatMoney(summary.totalSaved, currency)}
-        </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary">
-          across {goalCount} goal{goalCount === 1 ? '' : 's'}
-        </ThemedText>
-      </ThemedView>
+      <Card index={0} style={styles.hero}>
+        <View accessible accessibilityLabel={`Total saved: ${total}, across ${goalCount} goal${goalCount === 1 ? '' : 's'}`}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Total saved
+          </ThemedText>
+          <ThemedText type="hero" adjustsFontSizeToFit numberOfLines={1}>
+            {total}
+          </ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">
+            across {goalCount} goal{goalCount === 1 ? '' : 's'}
+          </ThemedText>
+        </View>
+      </Card>
 
       <View style={styles.tiles}>
         <StatTile label="Still to save" value={formatMoney(summary.totalRemaining, currency)} />
@@ -39,14 +42,16 @@ export function SavingsSummary({ summary, goalCount, currency }: SavingsSummaryP
 
 function StatTile({ label, value }: { label: string; value: string }) {
   return (
-    <ThemedView type="backgroundElement" style={styles.tile}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText style={styles.tileValue} adjustsFontSizeToFit numberOfLines={1}>
-        {value}
-      </ThemedText>
-    </ThemedView>
+    <Card index={1} style={styles.tile}>
+      <View accessible accessibilityLabel={`${label}: ${value}`} style={styles.tileInner}>
+        <ThemedText type="small" themeColor="textSecondary">
+          {label}
+        </ThemedText>
+        <ThemedText type="heading" style={styles.tileValue} adjustsFontSizeToFit numberOfLines={1}>
+          {value}
+        </ThemedText>
+      </View>
+    </Card>
   );
 }
 
@@ -55,9 +60,7 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   hero: {
-    gap: Spacing.one,
-    padding: Spacing.four,
-    borderRadius: Spacing.four,
+    paddingVertical: Spacing.four,
   },
   tiles: {
     flexDirection: 'row',
@@ -65,13 +68,12 @@ const styles = StyleSheet.create({
   },
   tile: {
     flex: 1,
+  },
+  tileInner: {
     gap: Spacing.one,
-    padding: Spacing.three,
-    borderRadius: Spacing.four,
   },
   tileValue: {
     fontSize: 22,
     lineHeight: 28,
-    fontWeight: 600,
   },
 });

@@ -13,11 +13,12 @@ A personal savings and budgeting app for one user, on their own phone. No accoun
 - **Budgeting tips and suggested savings amounts** are based on income and goals, e.g. "save £75/month to hit New laptop by March 2027".
 - **Reminders** such as "You have £340 left to save for New laptop".
 
-The default currency is GBP (£), and the user can pick another one in Settings (see `src/constants/currencies.ts`). The locale is `en-GB`. Dates are shown like "March 2027" or "11 Nov 2026".
+The default currency is GBP (£), and the user can pick another one in Settings (see `src/constants/currencies.ts`). Text and dates are UK English (`en-GB`). Money is formatted in its own currency's style ('£340', '$50', '₹1,23,456.50', '₺1.234,50'). Dates are shown like "March 2027" or "11 Nov 2026".
 
 ## Status
 
-- [x] Project setup, bottom tab bar with 4 placeholder tabs (Home, Goals, Budget, Settings)
+- [x] Project setup, bottom tab bar with 4 tabs (Home, Goals, Budget, Settings)
+- [x] Design polish: shared Screen/Card/Button components, type scale, radii, dark-mode navigation colours, animated progress bars and card fade-ins, accessibility labels
 - [x] Data model + local storage (Zustand + AsyncStorage) + goal helper functions
 - [x] Onboarding (first launch only): name → currency → monthly income after tax
 - [x] Settings: edit name, currency, monthly income; delete all data
@@ -77,8 +78,9 @@ src/
       budget.tsx        Budget tab: split, this month's savings, tips
       settings.tsx      Settings tab
   components/           Reusable UI pieces
-    ui/                 Generic building blocks: button.tsx, text-field.tsx, progress-bar.tsx,
-                        day-stepper.tsx, confetti.tsx, value-stepper.tsx, choice-chips.tsx
+    ui/                 Design system: screen.tsx, card.tsx, button.tsx, text-button.tsx,
+                        modal-header.tsx, empty-state.tsx, text-field.tsx, progress-bar.tsx,
+                        day-stepper.tsx, value-stepper.tsx, choice-chips.tsx, confetti.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
@@ -113,7 +115,7 @@ src/
     charts.ts           Chart data: savingsOverTime, niceAxis, formatCompactMoney, summariseGoals
     budget.ts           budgetSplit, savedThisMonth, incomeLevel, tipsFor, tipOfTheDay, labelColourOn
     reminders.ts        behindSchedule, goalsNeedingAttention, reminder messages, describeSchedule
-    money.ts            formatMoney, parseMoneyInput
+    money.ts            formatMoney (per-currency locale), parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
     id.ts               createId
@@ -172,13 +174,23 @@ Animation & effects:
 - Import with the `@/` alias (`@/components/...` → `src/...`) rather than long `../../` paths.
 - Function components and hooks only, no classes. Type props with a `type XProps = {...}`.
 - No `any`. Model data with explicit types in `src/types/`.
-- **Money is stored as whole minor units (pence/cents, integers)**, e.g. £9.99 → `999`, to avoid floating-point rounding errors. Only display it through `formatMoney(amount, currency)` from `src/utils/money.ts`, using the user's currency from `useCurrency()`. Every supported currency has 2 decimal places, so don't add zero-decimal currencies like JPY without updating the money helpers.
+- **Money is stored as whole minor units (pence/cents, integers)**, e.g. £9.99 → `999`, to avoid floating-point rounding errors. Only display it through `formatMoney(amount, currency)` from `src/utils/money.ts`, using the user's currency from `useCurrency()`. Each currency is formatted with its own locale (`locale` in `CURRENCIES`). By default whole amounts drop the decimals ('£340') and others show two ('£340.50'). Pass `{ decimals: 'always' }` for columns of numbers that must line up. `parseMoneyInput` accepts '1,234.56', '1.234,56', '12,50' and "1'234.50". Every supported currency has 2 decimal places, so don't add zero-decimal currencies like JPY without updating the money helpers. A new currency needs a `locale` and a symbol.
 - **Calendar dates are stored as `'YYYY-MM-DD'` strings** and **timestamps as full ISO strings**. Use the helpers in `src/utils/dates.ts`. Don't use `new Date('2027-03-31')`, because it reads the date as UTC and can show the wrong day.
 - IDs: use `createId()` from `src/utils/id.ts`.
-- Styles: `StyleSheet.create` at the bottom of the file. Take colours from `useTheme()` / `ThemedText` / `ThemedView` and spacing from `Spacing`, and don't hard-code hex colours or pixel gaps in screens. Theme colours: `text`, `textSecondary`, `background`, `backgroundElement`, `backgroundSelected`, `tint` (green accent) with `onTint` for text on top of it, `danger` and `border`. Any new colour needs both a light and a dark value.
-- Forms: put `KeyboardAvoidingView` (`behavior="padding"` on iOS) around a `ScrollView` with `keyboardShouldPersistTaps="handled"`. Use `keyboardType="decimal-pad"` for money fields.
+- Styles: `StyleSheet.create` at the bottom of the file. Take colours from `useTheme()` / `ThemedText` / `ThemedView`, spacing from `Spacing` and corners from `Radius`, and don't hard-code hex colours, pixel gaps or font sizes in screens. Theme colours: `text`, `textSecondary`, `background`, `backgroundElement`, `backgroundSelected`, `tint` (green accent) with `onTint` for text on top of it, `danger`, `border`, plus the chart and budget tokens. Any new colour needs both a light and a dark value.
+- Forms: use `<Screen keyboard>`, or for modals a `KeyboardAvoidingView` (`behavior="padding"` on iOS) around a `ScrollView` with `keyboardShouldPersistTaps="handled"`. Use `keyboardType="decimal-pad"` for money fields.
 - Confirmation dialogs: `Alert.alert` buttons don't work on web, so use `window.confirm` when `Platform.OS === 'web'`. Destructive actions (deleting a goal, deleting a saving, deleting all data) always ask first.
-- Accessibility: give interactive elements an `accessibilityRole` (and an `accessibilityState` where it applies). Keep tap targets at least 44pt tall.
+- Accessibility: give interactive elements an `accessibilityRole` (and an `accessibilityState` where it applies), and an `accessibilityHint` when the result isn't obvious ("Opens Settings"). Keep tap targets at least `MinTapSize` (44pt). Screen and card titles use `accessibilityRole="header"`, which `Screen` and `Card` do for you. Group a number with its label into one `accessible` view with a combined `accessibilityLabel` ("Total saved: £560"). Hide decorative emoji from screen readers (`importantForAccessibility="no"`). Text must scale with the system font size: don't fix the height of text containers, and use `adjustsFontSizeToFit` on big single-line numbers.
+
+## Design system (use these; don't rebuild them per screen)
+
+- **Layout:** tab screens use `<Screen title subtitle headerRight inTabs keyboard>` (`components/ui/screen.tsx`). It handles safe areas, `ScreenPadding` (20) sides, the tab-bar inset, centring on wide screens (`MaxContentWidth` 640) and the title. Modals use `<ModalHeader title onClose closeLabel>`.
+- **Surfaces:** every section is a `<Card title subtitle action index tone>` (`Radius.card` = 20, continuous corners, 20px padding). `index` staggers its fade-in; `tone="accent"` is the green fill. Don't hand-build cards with `ThemedView type="backgroundElement"`.
+- **Inputs inside cards:** form controls (text fields, steppers, pickers, chips) use the `background` colour plus a `border`, so they read as inset fields on both the page and a card. Radius is `Radius.control` (14).
+- **Buttons:** `<Button variant>`: `primary` (one main action per area), `secondary` (grey; visible on page and cards), `danger` (red outline, destructive only). They're 52pt tall; use `compact` in headers. Text links use `<TextButton>` (44pt tap area). Empty screens use `<EmptyState emoji title message actionTitle onAction>`.
+- **Type scale** (`ThemedText type`): `hero` (one per screen), `title`, `heading`, `default`/`defaultBold`, `small`/`smallBold`, `caption` (the minimum size), `emoji`/`emojiLarge`. The old `subtitle`/`link`/`code` types are gone.
+- **Motion:** `ProgressBar` animates its fill (700ms ease-out), and `Card` / `GoalCard` fade in, staggered. Every animation must respect reduce motion (`ReduceMotion.System` on layout animations, `useReducedMotion()` elsewhere). Keep motion small and purposeful: no looping or decorative animation besides the goal confetti.
+- **Navigation colours:** the root layout passes our palette to the navigation theme (`navigationThemes`), and the Goals stack sets `headerTintColor: tint`. The tab bar uses `tint` for the selected tab. The status bar follows light/dark mode.
 - Screens add `BottomTabInset` to their bottom padding so content isn't hidden behind the tab bar.
 - Keep screens thin: calculations go in `src/utils/`, storage access in `src/storage/`.
 - User-facing text is in UK English ("colour", "organise").

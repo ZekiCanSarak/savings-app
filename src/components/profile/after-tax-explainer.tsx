@@ -1,13 +1,14 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 /** Short explanation of "income after tax", shown next to the income field. */
 export function AfterTaxExplainer() {
+  const theme = useTheme();
   return (
-    <ThemedView type="backgroundElement" style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.border }]}>
       <ThemedText type="smallBold">What does “after tax” mean?</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         It’s the money that actually lands in your bank account each month, after things like
@@ -18,7 +19,7 @@ export function AfterTaxExplainer() {
         If your income changes month to month, use a typical month. You can change it any time in
         Settings.
       </ThemedText>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -26,6 +27,7 @@ const styles = StyleSheet.create({
   card: {
     gap: Spacing.two,
     padding: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
+    borderWidth: 1,
   },
 });

@@ -1,13 +1,15 @@
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ReminderPreview } from '@/components/reminders/reminder-preview';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import {
   useAppActions,
@@ -65,19 +67,13 @@ export default function ReminderSetupScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.topBar}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={close}
-            hitSlop={12}
-            style={({ pressed }) => [styles.topBarSide, pressed && styles.pressed]}>
-            <ThemedText themeColor="tint">Close</ThemedText>
-          </Pressable>
-        </View>
+        <ModalHeader closeLabel="Close" onClose={close} />
 
         <ScrollView contentContainerStyle={styles.content}>
-          <ThemedText style={styles.bell}>🔔</ThemedText>
-          <ThemedText type="subtitle" style={styles.center}>
+          <ThemedText type="emojiLarge" importantForAccessibility="no" accessibilityElementsHidden>
+            🔔
+          </ThemedText>
+          <ThemedText type="title" style={styles.center} accessibilityRole="header">
             Gentle savings reminders
           </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.center}>
@@ -85,12 +81,12 @@ export default function ReminderSetupScreen() {
             on your radar.
           </ThemedText>
 
-          <ThemedView type="backgroundElement" style={styles.card}>
+          <Card>
             <ThemedText type="small" themeColor="textSecondary">
               Your reminder would look like this:
             </ThemedText>
             <ReminderPreview message={preview} />
-          </ThemedView>
+          </Card>
 
           <View style={styles.points}>
             <Point icon="🗓️" text={`${describeSchedule(settings)}. You can change this in Settings.`} />
@@ -103,14 +99,14 @@ export default function ReminderSetupScreen() {
               Reminders work in the phone app, not in a web browser.
             </ThemedText>
           ) : blocked ? (
-            <ThemedView type="backgroundElement" style={styles.card}>
+            <Card>
               <ThemedText type="smallBold">Notifications are switched off for this app</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 To get reminders, allow notifications in your phone’s settings, then come back
                 here.
               </ThemedText>
               <Button title="Open phone settings" onPress={() => Linking.openSettings()} />
-            </ThemedView>
+            </Card>
           ) : null}
         </ScrollView>
 
@@ -132,7 +128,9 @@ export default function ReminderSetupScreen() {
 function Point({ icon, text }: { icon: string; text: string }) {
   return (
     <View style={styles.point}>
-      <ThemedText style={styles.pointIcon}>{icon}</ThemedText>
+      <ThemedText type="emoji" style={styles.pointIcon} importantForAccessibility="no">
+        {icon}
+      </ThemedText>
       <ThemedText type="small" themeColor="textSecondary" style={styles.flex}>
         {text}
       </ThemedText>
@@ -153,36 +151,13 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  topBar: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.four,
-    minHeight: 52,
-    alignItems: 'center',
-  },
-  topBarSide: {
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
-  },
   content: {
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
     paddingBottom: Spacing.four,
   },
-  bell: {
-    fontSize: 56,
-    lineHeight: 68,
-    textAlign: 'center',
-  },
   center: {
     textAlign: 'center',
-  },
-  card: {
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Spacing.four,
   },
   points: {
     gap: Spacing.two,
@@ -193,8 +168,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   pointIcon: {
-    fontSize: 18,
-    lineHeight: 22,
+    width: 32,
   },
   footer: {
     gap: Spacing.two,

@@ -1,7 +1,7 @@
 import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { ReminderMessage } from '@/utils/reminders';
 
@@ -31,7 +31,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.three,
     padding: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     borderWidth: 1,
   },
   appIcon: {

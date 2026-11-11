@@ -90,5 +90,20 @@ export const Spacing = {
   six: 64,
 } as const;
 
+/** Corner radii. Cards use `card`; inputs, buttons and small tiles use `control`. */
+export const Radius = {
+  small: 8,
+  control: 14,
+  card: 20,
+  pill: 999,
+} as const;
+
+/** Left/right padding of every screen. */
+export const ScreenPadding = 20;
+
+/** Smallest comfortable tap target (Apple and Google both recommend about 44–48pt). */
+export const MinTapSize = 44;
+
+/** Content width for phone-sized layouts; wider screens centre the content. */
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
-export const MaxContentWidth = 800;
+export const MaxContentWidth = 640;

@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { IsoDate } from '@/types/models';
 import { addDays, formatRelativeDay } from '@/utils/dates';
@@ -28,7 +28,7 @@ export function DayStepper({ label, value, onChange, max, min }: DayStepperProps
       <View
         style={[
           styles.stepper,
-          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          { backgroundColor: theme.background, borderColor: theme.border },
         ]}>
         <StepButton
           label="‹"
@@ -83,8 +83,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Spacing.three,
-    minHeight: 50,
+    borderRadius: Radius.control,
+    minHeight: 52,
   },
   stepButton: {
     width: 56,

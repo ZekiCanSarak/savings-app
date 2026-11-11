@@ -9,9 +9,11 @@ import { GoalCelebration } from '@/components/goals/goal-celebration';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Confetti } from '@/components/ui/confetti';
 import { ProgressBar } from '@/components/ui/progress-bar';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { BottomTabInset, MaxContentWidth, Radius, ScreenPadding, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 import {
   useAppActions,
   useContributions,
@@ -51,6 +53,7 @@ export default function GoalDetailScreen() {
   const currency = useCurrency();
   const { deleteGoal, deleteContribution } = useAppActions();
   const reduceMotion = useReducedMotion();
+  const theme = useTheme();
 
   // Celebrate when progress crosses into 100% while this screen is open
   // (e.g. after "Add money"), but not when opening an already-finished goal.
@@ -67,6 +70,7 @@ export default function GoalDetailScreen() {
     return (
       <ThemedView style={[styles.container, styles.notFound]}>
         <Stack.Screen options={{ title: 'Goal not found' }} />
+        <ThemedText type="emojiLarge">🔍</ThemedText>
         <ThemedText themeColor="textSecondary">This goal doesn’t exist any more.</ThemedText>
         <Button title="Back to goals" variant="secondary" onPress={goBackToList} />
       </ThemedView>
@@ -105,7 +109,8 @@ export default function GoalDetailScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <Stack.Screen options={{ title: goal.name }} />
+      {/* The big name below is the page title, so the bar just shows the back button. */}
+      <Stack.Screen options={{ title: '' }} />
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}>
@@ -118,26 +123,38 @@ export default function GoalDetailScreen() {
         )}
 
         <View style={styles.hero}>
-          <ThemedText style={styles.heroEmoji}>{goal.emoji}</ThemedText>
-          <ThemedText type="subtitle" style={styles.center}>
+          <View style={[styles.heroEmoji, { backgroundColor: theme.backgroundElement }]}>
+            <ThemedText type="emojiLarge" importantForAccessibility="no" accessibilityElementsHidden>
+              {goal.emoji}
+            </ThemedText>
+          </View>
+          <ThemedText type="title" style={styles.center} accessibilityRole="header">
             {goal.name}
           </ThemedText>
           {goal.targetDate ? (
-            <ThemedText themeColor="textSecondary">
-              Target: {formatMonthYear(goal.targetDate)}
-            </ThemedText>
+            <View style={[styles.chip, { backgroundColor: theme.backgroundElement }]}>
+              <ThemedText type="smallBold" themeColor="textSecondary">
+                🗓️ Target: {formatMonthYear(goal.targetDate)}
+              </ThemedText>
+            </View>
           ) : null}
         </View>
 
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <View style={styles.row}>
-            <ThemedText type="smallBold">
-              {money(progress.saved)}{' '}
+        <Card index={0}>
+          <View
+            style={styles.row}
+            accessible
+            accessibilityLabel={`${money(progress.saved)} saved of ${money(goal.targetAmount)}, ${progress.percent}%`}>
+            <View>
+              <ThemedText type="small" themeColor="textSecondary">
+                Saved
+              </ThemedText>
+              <ThemedText type="title">{money(progress.saved)}</ThemedText>
               <ThemedText type="small" themeColor="textSecondary">
                 of {money(goal.targetAmount)}
               </ThemedText>
-            </ThemedText>
-            <ThemedText type="smallBold" themeColor={complete ? 'tint' : 'text'}>
+            </View>
+            <ThemedText type="heading" themeColor={complete ? 'tint' : 'text'}>
               {progress.percent}%
             </ThemedText>
           </View>
@@ -149,19 +166,17 @@ export default function GoalDetailScreen() {
           </ThemedText>
           <Button
             title="+ Add money"
+            accessibilityHint="Opens a form to log money you’ve saved"
             onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
           />
-        </ThemedView>
+        </Card>
 
         {!complete && goal.targetDate && progress.monthlyNeeded !== null && (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold">Monthly plan</ThemedText>
+          <Card title="Monthly plan" index={1}>
             {savingMonthsLeft(goal.targetDate) > 0 ? (
               <ThemedText>
                 You need to save{' '}
-                <ThemedText type="smallBold" style={styles.inlineEmphasis}>
-                  {money(progress.monthlyNeeded)}
-                </ThemedText>{' '}
+                <ThemedText type="defaultBold">{money(progress.monthlyNeeded)}</ThemedText>{' '}
                 per month to reach this by {formatMonthYear(goal.targetDate)}.
               </ThemedText>
             ) : (
@@ -170,16 +185,21 @@ export default function GoalDetailScreen() {
                 {money(progress.remaining)} to go. Edit the goal to pick a new date.
               </ThemedText>
             )}
-          </ThemedView>
+          </Card>
         )}
 
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Saved over time</ThemedText>
+        <Card title="Saved over time" index={2}>
           <SavingsLineChart goal={goal} contributions={contributions} currency={currency} />
-        </ThemedView>
+        </Card>
 
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold">Savings history</ThemedText>
+        <Card
+          title="Savings history"
+          subtitle={
+            history.length > 0
+              ? `${history.length} saving${history.length === 1 ? '' : 's'}, newest first`
+              : undefined
+          }
+          index={3}>
           {history.length === 0 ? (
             <ThemedText type="small" themeColor="textSecondary">
               Nothing logged yet. Tap “Add money” when you put some aside.
@@ -194,9 +214,9 @@ export default function GoalDetailScreen() {
               />
             ))
           )}
-        </ThemedView>
+        </Card>
 
-        <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
+        <ThemedText type="caption" themeColor="textSecondary" style={styles.center}>
           Created {formatDate(toIsoDate(new Date(goal.createdAt)))}
         </ThemedText>
 
@@ -228,37 +248,39 @@ const styles = StyleSheet.create({
   },
   content: {
     gap: Spacing.three,
-    padding: Spacing.four,
-    paddingBottom: BottomTabInset + Spacing.four,
+    paddingHorizontal: ScreenPadding,
+    paddingTop: Spacing.two,
+    paddingBottom: BottomTabInset + Spacing.five,
     width: '100%',
     maxWidth: MaxContentWidth,
     alignSelf: 'center',
   },
   hero: {
     alignItems: 'center',
-    gap: Spacing.one,
+    gap: Spacing.two,
     marginBottom: Spacing.two,
   },
   heroEmoji: {
-    fontSize: 64,
-    lineHeight: 76,
+    width: 96,
+    height: 96,
+    borderRadius: Radius.card + 8,
+    borderCurve: 'continuous',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chip: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + Spacing.half,
+    borderRadius: Radius.pill,
   },
   center: {
     textAlign: 'center',
   },
-  card: {
-    gap: Spacing.three,
-    padding: Spacing.three,
-    borderRadius: Spacing.four,
-  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     gap: Spacing.two,
-  },
-  inlineEmphasis: {
-    fontSize: 16,
   },
   actions: {
     gap: Spacing.two,

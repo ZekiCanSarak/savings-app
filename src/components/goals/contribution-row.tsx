@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { MinTapSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { Contribution, CurrencyCode } from '@/types/models';
 import { formatRelativeDay } from '@/utils/dates';
@@ -57,9 +57,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   deleteButton: {
-    minHeight: 36,
+    minHeight: MinTapSize,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.two,
+    borderRadius: Radius.small,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

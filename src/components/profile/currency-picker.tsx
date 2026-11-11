@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { CURRENCIES } from '@/constants/currencies';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { CurrencyCode } from '@/types/models';
 
@@ -29,8 +29,8 @@ export function CurrencyPicker({ value, onChange }: CurrencyPickerProps) {
             style={({ pressed }) => [
               styles.row,
               {
-                backgroundColor: selected ? theme.backgroundSelected : theme.backgroundElement,
-                borderColor: selected ? theme.tint : 'transparent',
+                backgroundColor: theme.background,
+                borderColor: selected ? theme.tint : theme.border,
               },
               pressed && styles.pressed,
             ]}>
@@ -63,7 +63,8 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
     minHeight: 52,
     paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
+    borderCurve: 'continuous',
     borderWidth: 2,
   },
   symbol: {

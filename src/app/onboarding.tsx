@@ -88,7 +88,7 @@ export default function OnboardingScreen() {
 
             {step === 0 && (
               <>
-                <ThemedText type="subtitle">Welcome 👋</ThemedText>
+                <ThemedText type="title" accessibilityRole="header">Welcome 👋</ThemedText>
                 <ThemedText themeColor="textSecondary">
                   Let’s set things up so we can help you save. First, what should we call you?
                 </ThemedText>
@@ -114,7 +114,7 @@ export default function OnboardingScreen() {
 
             {step === 1 && (
               <>
-                <ThemedText type="subtitle">Hi {name}!</ThemedText>
+                <ThemedText type="title" accessibilityRole="header">Hi {name}!</ThemedText>
                 <ThemedText themeColor="textSecondary">
                   Which currency do you use? You can change this later in Settings.
                 </ThemedText>
@@ -124,7 +124,7 @@ export default function OnboardingScreen() {
 
             {step === 2 && (
               <>
-                <ThemedText type="subtitle">Your monthly income</ThemedText>
+                <ThemedText type="title" accessibilityRole="header">Your monthly income</ThemedText>
                 <ThemedText themeColor="textSecondary">
                   How much do you take home each month, after tax? We use this to suggest how much
                   you could save.

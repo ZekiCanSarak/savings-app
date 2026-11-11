@@ -4,11 +4,10 @@ import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { ChoiceChips } from '@/components/ui/choice-chips';
 import { ValueStepper } from '@/components/ui/value-stepper';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import {
   useAppActions,
   useContributions,
@@ -103,14 +102,14 @@ export function ReminderSettingsSection() {
       </View>
 
       {settings.enabled && blocked && (
-        <ThemedView type="backgroundElement" style={styles.card}>
+        <View style={[styles.card, { backgroundColor: theme.background, borderColor: theme.danger }]} accessibilityRole="alert">
           <ThemedText type="smallBold">Notifications are blocked</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             Reminders are on, but notifications for this app are switched off in your phone’s
             settings, so nothing will arrive.
           </ThemedText>
           <Button title="Open phone settings" onPress={() => Linking.openSettings()} />
-        </ThemedView>
+        </View>
       )}
 
       {isOn && (
@@ -187,6 +186,7 @@ const styles = StyleSheet.create({
   card: {
     gap: Spacing.two,
     padding: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
+    borderWidth: 1.5,
   },
 });

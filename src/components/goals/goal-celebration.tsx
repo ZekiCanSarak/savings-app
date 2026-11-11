@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import Animated, { ZoomIn } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { MinTapSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type GoalCelebrationProps = {
@@ -23,8 +23,8 @@ export function GoalCelebration({ goalName, targetText, onDismiss }: GoalCelebra
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
         style={[styles.card, { backgroundColor: theme.tint }]}>
-        <ThemedText style={styles.emoji}>🎉</ThemedText>
-        <ThemedText type="subtitle" style={[styles.center, { color: theme.onTint }]}>
+        <ThemedText type="emojiLarge" importantForAccessibility="no">🎉</ThemedText>
+        <ThemedText type="title" style={[styles.center, { color: theme.onTint }]}>
           Goal reached!
         </ThemedText>
         <ThemedText style={[styles.center, { color: theme.onTint }]}>
@@ -53,20 +53,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     padding: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-  emoji: {
-    fontSize: 48,
-    lineHeight: 58,
+    borderRadius: Radius.card,
+    borderCurve: 'continuous',
   },
   center: {
     textAlign: 'center',
   },
   dismiss: {
     marginTop: Spacing.two,
-    minHeight: 44,
+    minHeight: MinTapSize,
     paddingHorizontal: Spacing.four,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',

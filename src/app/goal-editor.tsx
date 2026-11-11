@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmojiPicker } from '@/components/goals/emoji-picker';
@@ -8,10 +8,11 @@ import { MonthPicker } from '@/components/goals/month-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
+import { ModalHeader } from '@/components/ui/modal-header';
 import { TextField } from '@/components/ui/text-field';
 import { CURRENCIES } from '@/constants/currencies';
 import { DEFAULT_GOAL_EMOJI } from '@/constants/goal-emojis';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAppActions, useContributions, useCurrency, useGoal } from '@/hooks/use-app-data';
 import type { IsoDate } from '@/types/models';
 import { formatMonthYear } from '@/utils/dates';
@@ -108,26 +109,14 @@ function GoalForm({ goalId }: { goalId?: string }) {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.topBar}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={close}
-            hitSlop={12}
-            style={({ pressed }) => [styles.topBarSide, pressed && styles.pressed]}>
-            <ThemedText themeColor="tint">Cancel</ThemedText>
-          </Pressable>
-          <ThemedText type="smallBold" style={styles.topBarTitle} accessibilityRole="header">
-            {isEditing ? 'Edit goal' : 'New goal'}
-          </ThemedText>
-          <View style={styles.topBarSide} />
-        </View>
+        <ModalHeader title={isEditing ? 'Edit goal' : 'New goal'} onClose={close} />
 
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.preview}>
-              <ThemedText style={styles.previewEmoji}>{emoji}</ThemedText>
+              <ThemedText type="emojiLarge" accessibilityLabel={`Chosen icon: ${emoji}`}>{emoji}</ThemedText>
             </View>
 
             <TextField
@@ -212,25 +201,6 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.four,
-    minHeight: 52,
-  },
-  topBarSide: {
-    width: 72,
-    minHeight: 44,
-    justifyContent: 'center',
-  },
-  topBarTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
-  },
-  pressed: {
-    opacity: 0.6,
-  },
   content: {
     gap: Spacing.three,
     paddingHorizontal: Spacing.four,
@@ -239,13 +209,9 @@ const styles = StyleSheet.create({
   preview: {
     alignItems: 'center',
   },
-  previewEmoji: {
-    fontSize: 56,
-    lineHeight: 68,
-  },
   hint: {
     padding: Spacing.three,
-    borderRadius: Spacing.three,
+    borderRadius: Radius.control,
   },
   footer: {
     paddingHorizontal: Spacing.four,

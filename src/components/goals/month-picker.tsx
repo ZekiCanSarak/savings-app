@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type { IsoDate } from '@/types/models';
 import {
@@ -66,7 +66,7 @@ export function MonthPicker({ value, onChange, error }: MonthPickerProps) {
         <View
           style={[
             styles.stepper,
-            { backgroundColor: theme.backgroundElement, borderColor: error ? theme.danger : theme.border },
+            { backgroundColor: theme.background, borderColor: error ? theme.danger : theme.border },
           ]}>
           <StepButton label="‹" accessibilityLabel="Previous month" disabled={!canGoBack} onPress={() => step(-1)} />
           <ThemedText style={styles.monthText} accessibilityLiveRegion="polite">
@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Spacing.three,
-    minHeight: 50,
+    borderRadius: Radius.control,
+    minHeight: 52,
   },
   stepButton: {
     width: 56,

@@ -1,8 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { ProgressBar } from '@/components/ui/progress-bar';
+import { MinTapSize, Spacing } from '@/constants/theme';
 import type { CurrencyCode, SavingsGoal } from '@/types/models';
 import type { GoalProgressRow } from '@/utils/charts';
 import { formatMoney } from '@/utils/money';
@@ -14,8 +14,6 @@ type GoalProgressBarsProps = {
   onPressGoal: (goal: SavingsGoal) => void;
 };
 
-const BAR_HEIGHT = 12;
-
 /**
  * Ranked horizontal bars comparing % complete across goals, on one shared
  * 0–100% scale. One colour for every bar (the goals' names say which is which),
@@ -23,8 +21,6 @@ const BAR_HEIGHT = 12;
  * doubles as its own table view.
  */
 export function GoalProgressBars({ rows, currency, onPressGoal }: GoalProgressBarsProps) {
-  const theme = useTheme();
-
   return (
     <View style={styles.list}>
       {rows.map(({ goal, saved, percent }) => {
@@ -33,26 +29,20 @@ export function GoalProgressBars({ rows, currency, onPressGoal }: GoalProgressBa
           <Pressable
             key={goal.id}
             accessibilityRole="button"
-            accessibilityLabel={`${goal.name}, ${percent}% complete, ${amounts}`}
+            accessibilityLabel={`${goal.name}, ${percent}% complete, ${amounts} saved`}
             accessibilityHint="Opens goal details"
             onPress={() => onPressGoal(goal)}
             style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
             <View style={styles.labelRow}>
-              <ThemedText type="small" numberOfLines={1} style={styles.name}>
+              <ThemedText type="smallBold" numberOfLines={1} style={styles.name}>
                 {goal.emoji} {goal.name}
               </ThemedText>
               <ThemedText type="smallBold">{percent}%</ThemedText>
             </View>
-            <View
-              style={[styles.track, { backgroundColor: theme.chartTrack }]}
-              importantForAccessibility="no-hide-descendants">
-              {percent > 0 && (
-                <View
-                  style={[styles.fill, { width: `${percent}%`, backgroundColor: theme.chart }]}
-                />
-              )}
+            <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+              <ProgressBar percent={percent} />
             </View>
-            <ThemedText type="small" themeColor="textSecondary">
+            <ThemedText type="caption" themeColor="textSecondary">
               {amounts}
             </ThemedText>
           </Pressable>
@@ -64,10 +54,11 @@ export function GoalProgressBars({ rows, currency, onPressGoal }: GoalProgressBa
 
 const styles = StyleSheet.create({
   list: {
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   row: {
-    gap: Spacing.one,
+    gap: Spacing.one + Spacing.half,
+    minHeight: MinTapSize,
     paddingVertical: Spacing.one,
   },
   pressed: {
@@ -80,17 +71,5 @@ const styles = StyleSheet.create({
   },
   name: {
     flex: 1,
-  },
-  // Square at the baseline (left), 4px rounded at the data end (right).
-  track: {
-    height: BAR_HEIGHT,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
-    overflow: 'hidden',
-  },
-  fill: {
-    height: '100%',
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
   },
 });

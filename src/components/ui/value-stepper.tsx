@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 type ValueStepperProps = {
@@ -35,7 +35,7 @@ export function ValueStepper({
       <View
         style={[
           styles.stepper,
-          { backgroundColor: theme.backgroundElement, borderColor: theme.border },
+          { backgroundColor: theme.background, borderColor: theme.border },
         ]}>
         <StepButton label="‹" accessibilityLabel={`${previousLabel} (${label})`} disabled={!canGoPrevious} onPress={onPrevious} />
         <ThemedText style={styles.value} accessibilityLiveRegion="polite">
@@ -80,8 +80,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderRadius: Spacing.three,
-    minHeight: 50,
+    borderRadius: Radius.control,
+    minHeight: 52,
   },
   stepButton: {
     width: 56,
