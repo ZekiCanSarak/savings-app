@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -12,8 +13,12 @@ type TextFieldProps = Omit<TextInputProps, 'style'> & {
   prefix?: string;
 };
 
-export function TextField({ label, error, prefix, ...inputProps }: TextFieldProps) {
+export function TextField({ label, error, prefix, onFocus, onBlur, ...inputProps }: TextFieldProps) {
   const theme = useTheme();
+  // The browser's own focus box is turned off (see src/app/+html.tsx), so the rounded
+  // border turns green instead to show which field is active.
+  const [focused, setFocused] = useState(false);
+  const borderColor = error ? theme.danger : focused ? theme.tint : theme.border;
 
   return (
     <View style={styles.wrapper}>
@@ -21,7 +26,7 @@ export function TextField({ label, error, prefix, ...inputProps }: TextFieldProp
       <View
         style={[
           styles.inputRow,
-          { backgroundColor: theme.background, borderColor: error ? theme.danger : theme.border },
+          { backgroundColor: theme.background, borderColor },
         ]}>
         {prefix ? (
           <ThemedText themeColor="textSecondary" style={styles.prefix}>
@@ -33,6 +38,14 @@ export function TextField({ label, error, prefix, ...inputProps }: TextFieldProp
           placeholderTextColor={theme.textSecondary}
           style={[styles.input, { color: theme.text }]}
           {...inputProps}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
         />
       </View>
       {error ? (

@@ -53,7 +53,10 @@ export default function Root({ children }: PropsWithChildren) {
   );
 }
 
+// Text fields show focus with their own green border (components/ui/text-field.tsx),
+// so the browser's focus box inside them is hidden.
 const backgroundCss = `
+input:focus, textarea:focus { outline: none; }
 body { background-color: #ffffff; }
 @media (prefers-color-scheme: dark) {
   body { background-color: #000000; }
