@@ -84,7 +84,11 @@ export default function HomeScreen() {
           </Card>
 
           {reminders.length > 0 && (
-            <Card title="Reminders" index={3}>
+            <Card
+              title="Reminders"
+              // The web app has no notifications, so this card is where reminders live.
+              subtitle={notificationsSupported ? undefined : 'Check back here for your reminders.'}
+              index={3}>
               <ReminderMessages messages={reminders} />
             </Card>
           )}

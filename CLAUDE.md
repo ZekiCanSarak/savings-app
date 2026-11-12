@@ -27,6 +27,8 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Charts: Home summary (total saved, still to save, goals reached) + ranked progress bars; goal detail line chart of saved over time with dashed target line
 - [x] Budget: 50/30/20 split chart, suggested vs saved this month, what goals need per month, income-based tips; tip of the day on Home; "not financial advice" note
 - [x] Reminders: local notifications (weekly/monthly at a chosen time), explained before asking permission, about the goal furthest behind schedule; rescheduled on every data change; same messages on Home
+- [x] Web version as a PWA ("Goalpot"): static web build, manifest + icons, full screen from the iPhone home screen, deployed with EAS Hosting. Notifications are phone-only; on web the Reminders section is hidden and reminders show on Home
+- [x] Export / import data (Settings, all platforms): JSON backup file; import asks before replacing
 
 Update this list as features land.
 
@@ -39,7 +41,23 @@ Update this list as features land.
 - React Compiler and typed routes are enabled (`app.json` → `experiments`).
 - **State + storage:** Zustand (`zustand`) with its `persist` middleware, which saves to `@react-native-async-storage/async-storage`. See "Data layer" below.
 - **Charts:** `react-native-gifted-charts`, which draws with `react-native-svg` and uses `expo-linear-gradient` for area fills. Both are in Expo Go, and it renders the same on iOS, Android and web. We chose it over `victory-native` (Skia-based), which would need fonts loaded for axis labels and CanvasKit set up for web: more setup for no benefit at our data sizes. Simple bars (like Home's progress-by-goal) are plain `View`s, which give full control over labels and accessibility.
+- **Files (export/import):** `expo-file-system` (`File`, `Paths`), `expo-sharing`, `expo-document-picker`, all in Expo Go.
 - **Notifications:** `expo-notifications`, used for **local** scheduled notifications only. There's no server and no push tokens: remote push doesn't work in Expo Go on Android since SDK 53, while local notifications do. Don't call push-token APIs (`getExpoPushTokenAsync`, `getDevicePushTokenAsync`), because they throw in Expo Go on Android. The two yellow "not fully supported in Expo Go" warnings at startup are expected.
+
+## Web version (PWA "Goalpot")
+
+- The same app also runs in a browser and can be added to the iPhone home screen from Safari, where it opens full screen as **Goalpot**. Keep iOS/Android working: web-only changes go behind `Platform.OS === 'web'` or in `.web.ts(x)` files.
+- `app.json` → `web.output: "static"`: every route is built to its own HTML file, so any free static host works. Dynamic routes (`goals/[id]`) can't be built ahead (ids live on the device); a fresh load of `/goals/<id>` relies on the host serving `+not-found.html`, after which the app hydrates onto the right screen. The installed PWA always starts at `/`.
+- PWA files: `src/app/+html.tsx` (web-only HTML shell: manifest link, Apple meta tags, `viewport-fit=cover`, `black-translucent` status bar, page background), `public/manifest.json`, and `public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`. Everything in `public/` is copied to the site root. The theme colour is `tint` (`#1F7A52`).
+- `services/notifications.web.ts` has the same exports as `notifications.ts` but does nothing, which keeps expo-notifications out of the web bundle. Keep the two in sync.
+- The web tab bar (`app-tabs.web.tsx`) sits below the screens, not over them, and pads for the home indicator, so `BottomTabInset` is 0 on web.
+- Commands: `npm run preview:web` (build + serve at http://localhost:8081), `npm run deploy:web` (build + `eas deploy --prod` to EAS Hosting; needs `npx eas-cli login` once).
+
+## Export / import
+
+- Settings → "Export my data" / "Import my data". `utils/backup.ts` builds and checks the file (`{ app: 'goalpot', version, exportedAt, data: { profile, goals, contributions } }`). Reminder settings are not included: they depend on this device's notification permission, so an import keeps the current device's.
+- An imported file goes through the same sanitising as saved data (`sanitizeProfile` / `sanitizeGoals` / `sanitizeContributions`), and the user confirms before `importBackup` replaces anything. A new saved field that belongs in backups needs adding to `BackupData` and `parseBackup`; bump the backup `version` if the shape changes, and keep reading older versions.
+- `services/backup-file.ts` (phone: writes to the cache folder and opens the share sheet, picks with expo-document-picker) and `backup-file.web.ts` (share sheet on touch devices, download on computers, `<input type=file>` to pick). Web only allows these straight after a tap, so pick the file *before* showing the confirmation.
 
 ## Data layer
 
@@ -71,6 +89,7 @@ Expo APIs changed a lot in recent SDKs. Before using an Expo API, check the SDK 
 src/
   app/                  Screens. Each file is a route (Expo Router).
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
+    +html.tsx           Web only: HTML shell with the PWA tags
     onboarding.tsx      First-launch welcome flow (3 steps)
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
@@ -113,6 +132,9 @@ src/
     use-theme.ts        Current theme colours
   services/
     notifications.ts    The ONLY file that imports expo-notifications
+    notifications.web.ts  Web stand-in with the same exports (does nothing)
+    backup-file.ts      Save/pick a backup file (share sheet, document picker)
+    backup-file.web.ts  Same for web (share sheet / download, file input)
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
     sanitize.ts         Repairs loaded data so a bad save can't crash the app
@@ -126,8 +148,10 @@ src/
     money.ts            formatMoney (per-currency locale), parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
+    backup.ts           createBackup / parseBackup for export and import
     id.ts               createId
 assets/                 Images, icons, splash
+public/                 Copied to the web site root: manifest.json, PWA icons
 ```
 
 Add `src/components/<feature>/` for components used by one feature only (e.g. `components/goals/goal-card.tsx`). Use the shared `Button` and `TextField` from `components/ui/` for forms, rather than making new ones.
@@ -212,6 +236,8 @@ npx expo start --tunnel # same, if phone and PC can't see each other on the netw
 npx tsc --noEmit        # type-check
 npx eslint src          # lint (`npm run lint` / `expo lint` wrongly rejects ESLint 9.39, so run eslint directly)
 npx expo install <pkg>  # add a library at the SDK-compatible version
+npm run preview:web     # build the web version and serve it at http://localhost:8081
+npm run deploy:web      # build and deploy the web version to EAS Hosting
 ```
 
 Before committing: run `npx tsc --noEmit` and make sure the app still opens in Expo Go.

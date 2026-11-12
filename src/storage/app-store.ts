@@ -12,6 +12,7 @@ import type {
   UserProfile,
 } from '@/types/models';
 import { nowIsoTimestamp } from '@/utils/dates';
+import type { BackupData } from '@/utils/backup';
 import { createId } from '@/utils/id';
 
 import { sanitizeAppData } from './sanitize';
@@ -62,6 +63,12 @@ type AppActions = {
 
   updateReminders: (changes: Partial<ReminderSettings>) => void;
   dismissReminderPrompt: () => void;
+
+  /**
+   * Replaces the profile, goals and savings with a backup's (already checked
+   * with parseBackup). Reminder settings stay as they are on this device.
+   */
+  importBackup: (backup: BackupData) => void;
 
   /** Wipes everything back to a fresh install. */
   resetAllData: () => void;
@@ -125,6 +132,9 @@ export const useAppStore = create<AppState>()(
 
       updateReminders: (changes) => set((s) => ({ reminders: { ...s.reminders, ...changes } })),
       dismissReminderPrompt: () => set({ reminderPromptDismissed: true }),
+
+      importBackup: ({ profile, goals, contributions }) =>
+        set({ profile, goals, contributions, onboardingComplete: true }),
 
       resetAllData: () => set(initialData),
     }),

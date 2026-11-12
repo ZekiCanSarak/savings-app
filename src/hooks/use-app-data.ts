@@ -87,6 +87,7 @@ export function useAppActions() {
       deleteContribution: s.deleteContribution,
       updateReminders: s.updateReminders,
       dismissReminderPrompt: s.dismissReminderPrompt,
+      importBackup: s.importBackup,
       resetAllData: s.resetAllData,
     })),
   );

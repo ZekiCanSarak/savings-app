@@ -26,7 +26,7 @@ function sanitizeCurrency(value: unknown): CurrencyCode {
   return CURRENCIES.some((c) => c.code === value) ? (value as CurrencyCode) : DEFAULT_CURRENCY;
 }
 
-function sanitizeProfile(value: unknown, fallback: UserProfile): UserProfile {
+export function sanitizeProfile(value: unknown, fallback: UserProfile): UserProfile {
   if (!isObject(value)) return fallback;
   const income = value.monthlyIncome;
   return {
@@ -36,7 +36,7 @@ function sanitizeProfile(value: unknown, fallback: UserProfile): UserProfile {
   };
 }
 
-function sanitizeGoals(value: unknown): SavingsGoal[] {
+export function sanitizeGoals(value: unknown): SavingsGoal[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
   return value.flatMap((g): SavingsGoal[] => {
@@ -59,7 +59,7 @@ function sanitizeGoals(value: unknown): SavingsGoal[] {
   });
 }
 
-function sanitizeContributions(value: unknown, goalIds: Set<string>): Contribution[] {
+export function sanitizeContributions(value: unknown, goalIds: Set<string>): Contribution[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((c): Contribution[] => {
     if (!isObject(c) || typeof c.id !== 'string' || typeof c.goalId !== 'string') return [];
