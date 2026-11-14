@@ -50,6 +50,7 @@ Update this list as features land.
 - `app.json` → `web.output: "static"`: every route is built to its own HTML file, so any free static host works. Dynamic routes (`goals/[id]`) can't be built ahead (ids live on the device); a fresh load of `/goals/<id>` relies on the host serving `+not-found.html`, after which the app hydrates onto the right screen. The installed PWA always starts at `/`.
 - PWA files: `src/app/+html.tsx` (web-only HTML shell: manifest link, Apple meta tags, `viewport-fit=cover`, `black-translucent` status bar, page background), `public/manifest.json`, and `public/icon-192.png`, `icon-512.png`, `apple-touch-icon.png`. Everything in `public/` is copied to the site root. The theme colour is `tint` (`#1F7A52`).
 - `services/notifications.web.ts` has the same exports as `notifications.ts` but does nothing, which keeps expo-notifications out of the web bundle. Keep the two in sync.
+- On web, Budget's "Tips for you" card starts closed and opens on tap (`TipsSection collapsible`); the phone app shows the full list.
 - The web tab bar (`app-tabs.web.tsx`) sits below the screens, not over them, and pads for the home indicator, so `BottomTabInset` is 0 on web.
 - Commands: `npm run preview:web` (build + serve at http://localhost:8081), `npm run deploy:web` (build + `eas deploy --prod` to EAS Hosting; needs `npx eas-cli login` once).
 
@@ -111,7 +112,7 @@ src/
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
-    budget/             budget-split-chart.tsx, tip-card.tsx, advice-note.tsx
+    budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx
     reminders/          reminder-settings.tsx (Settings section), reminder-messages.tsx (Home),
                         reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
     home/               savings-summary.tsx (hero total + stat tiles)

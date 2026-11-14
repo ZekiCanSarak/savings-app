@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 
 import { AdviceNote } from '@/components/budget/advice-note';
 import { BudgetSplitChart } from '@/components/budget/budget-split-chart';
-import { TipCard } from '@/components/budget/tip-card';
+import { TipsSection } from '@/components/budget/tips-section';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -161,13 +161,8 @@ function BudgetContent({
       </Card>
       )}
 
-      <Card title="Tips for you" subtitle={`${tips.length} ideas to help you save`} index={2}>
-        <View style={styles.tips}>
-          {tips.map((tip) => (
-            <TipCard key={tip.id} tip={tip} />
-          ))}
-        </View>
-      </Card>
+      {/* On web the long tips list starts folded away, so the budget itself stays in view. */}
+      <TipsSection tips={tips} index={2} collapsible={Platform.OS === 'web'} />
     </>
   );
 }
@@ -186,8 +181,5 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     gap: Spacing.two,
-  },
-  tips: {
-    gap: Spacing.four,
   },
 });
