@@ -1,4 +1,11 @@
-import { Image, type ImageSourcePropType, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import {
+  Image,
+  type ImageSourcePropType,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -10,13 +17,18 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 import { feedbackEnabled, openFeedback } from '@/services/feedback';
 
+import { FeatureShowcase } from './feature-showcase';
 import type { LandingPageProps } from './landing-page';
 
 /**
  * Screenshots of the demo data at iPhone size (390 × 844), in light and dark.
  * Retake them when the screens change noticeably.
  */
-const SCREENSHOTS: { light: ImageSourcePropType; dark: ImageSourcePropType; label: string }[] = [
+const SCREENSHOTS: {
+  light: ImageSourcePropType;
+  dark: ImageSourcePropType;
+  label: string;
+}[] = [
   {
     light: require('@/assets/images/landing/home-light.png'),
     dark: require('@/assets/images/landing/home-dark.png'),
@@ -40,29 +52,6 @@ const SCREENSHOTS: { light: ImageSourcePropType; dark: ImageSourcePropType; labe
 ];
 const SHOT_RATIO = 844 / 390;
 
-const FEATURES = [
-  {
-    emoji: '🎯',
-    title: 'Goals with a plan',
-    text: 'Set a target and a date. Goalpot works out how much to put aside each month.',
-  },
-  {
-    emoji: '📈',
-    title: 'See it add up',
-    text: 'Charts, saving streaks and a look back at your year keep you going.',
-  },
-  {
-    emoji: '💷',
-    title: 'A budget that fits you',
-    text: 'A simple split of your pay, suggested savings and tips matched to your answers.',
-  },
-  {
-    emoji: '🗓️',
-    title: 'Payday check-ins',
-    text: 'On payday, save your suggested amount in one tap. Split a bonus between goals.',
-  },
-];
-
 /**
  * Web only: what a first-time visitor sees before the welcome flow. Explains
  * Goalpot, shows it, and offers the demo. Skipped when opened from the home
@@ -73,7 +62,9 @@ export function LandingPage({ onGetStarted, onTryDemo }: LandingPageProps) {
   const scheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const { width } = useWindowDimensions();
   const wide = width >= 820;
-  const shotWidth = wide ? Math.min(220, (Math.min(width, 1100) - 4 * 48) / 4) : Math.min(240, width * 0.62);
+  const shotWidth = wide
+    ? Math.min(220, (Math.min(width, 1100) - 4 * 48) / 4)
+    : Math.min(240, width * 0.62);
 
   return (
     <ThemedView style={styles.page}>
@@ -102,7 +93,11 @@ export function LandingPage({ onGetStarted, onTryDemo }: LandingPageProps) {
             </ThemedText>
             <View style={[styles.actions, wide && styles.actionsWide]}>
               <View style={wide ? styles.actionWide : undefined}>
-                <Button title="Get started" onPress={onGetStarted} accessibilityHint="Starts setting up Goalpot" />
+                <Button
+                  title="Get started"
+                  onPress={onGetStarted}
+                  accessibilityHint="Starts setting up Goalpot"
+                />
               </View>
               <View style={wide ? styles.actionWide : undefined}>
                 <Button
@@ -131,7 +126,10 @@ export function LandingPage({ onGetStarted, onTryDemo }: LandingPageProps) {
                 <View
                   style={[
                     styles.frame,
-                    { borderColor: theme.backgroundSelected, backgroundColor: theme.backgroundSelected },
+                    {
+                      borderColor: theme.backgroundSelected,
+                      backgroundColor: theme.backgroundSelected,
+                    },
                   ]}>
                   <Image
                     source={shot[scheme]}
@@ -149,42 +147,33 @@ export function LandingPage({ onGetStarted, onTryDemo }: LandingPageProps) {
         )}
 
         <View style={styles.column}>
-          <View style={[styles.features, wide && styles.featuresWide]}>
-            {FEATURES.map((feature) => (
-              <View key={feature.title} style={[styles.feature, wide && styles.featureWide]}>
-                <ThemedText type="emoji" importantForAccessibility="no" accessibilityElementsHidden>
-                  {feature.emoji}
+          <FeatureShowcase wide={wide} />
+
+          <View style={[styles.pair, wide && styles.pairWide]}>
+            <Card title="Private by design" style={wide ? styles.flex : undefined}>
+              <ThemedText themeColor="textSecondary">
+                No account, no sign-up and no servers. Your goals, income and savings are stored
+                only on your device, and nobody else can see them. You can export a backup file
+                whenever you like.
+              </ThemedText>
+            </Card>
+
+            <Card title="Add it to your home screen" style={wide ? styles.flex : undefined}>
+              <ThemedText themeColor="textSecondary">
+                Goalpot works like a normal app, full screen and with its own icon.
+              </ThemedText>
+              <View style={styles.steps}>
+                <ThemedText type="defaultBold">iPhone</ThemedText>
+                <ThemedText themeColor="textSecondary">
+                  Open this page in Safari, tap the Share button, then “Add to Home Screen”.
                 </ThemedText>
-                <ThemedText type="heading" accessibilityRole="header">
-                  {feature.title}
+                <ThemedText type="defaultBold">Android</ThemedText>
+                <ThemedText themeColor="textSecondary">
+                  Open this page in Chrome, tap the ⋮ menu, then “Add to Home screen”.
                 </ThemedText>
-                <ThemedText themeColor="textSecondary">{feature.text}</ThemedText>
               </View>
-            ))}
+            </Card>
           </View>
-
-          <Card title="🔒 Private by design">
-            <ThemedText themeColor="textSecondary">
-              No account, no sign-up and no servers. Your goals, income and savings are stored only on
-              your device, and nobody else can see them. You can export a backup file whenever you like.
-            </ThemedText>
-          </Card>
-
-          <Card title="📱 Add it to your home screen">
-            <ThemedText themeColor="textSecondary">
-              Goalpot works like a normal app, full screen and with its own icon.
-            </ThemedText>
-            <View style={styles.steps}>
-              <ThemedText type="defaultBold">iPhone</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                Open this page in Safari, tap the Share button, then “Add to Home Screen”.
-              </ThemedText>
-              <ThemedText type="defaultBold">Android</ThemedText>
-              <ThemedText themeColor="textSecondary">
-                Open this page in Chrome, tap the ⋮ menu, then “Add to Home screen”.
-              </ThemedText>
-            </View>
-          </Card>
 
           <View style={styles.hero}>
             <ThemedText type="title" style={styles.center} accessibilityRole="header">
@@ -294,18 +283,14 @@ const styles = StyleSheet.create({
   shotImage: {
     borderRadius: 28,
   },
-  features: {
-    gap: Spacing.four,
+  pair: {
+    gap: Spacing.three,
   },
-  featuresWide: {
+  pairWide: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
   },
-  feature: {
-    gap: Spacing.one,
-  },
-  featureWide: {
-    width: '47%',
+  flex: {
+    flex: 1,
   },
   steps: {
     gap: Spacing.one,
