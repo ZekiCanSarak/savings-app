@@ -61,6 +61,20 @@ export function useReminderPromptDismissed() {
   return useAppStore((s) => s.reminderPromptDismissed);
 }
 
+export function useIsDemo() {
+  return useAppStore((s) => s.demo);
+}
+
+export function useIntroSeen() {
+  return useAppStore((s) => s.introSeen);
+}
+
+export function useFeedbackPrompt() {
+  return useAppStore(
+    useShallow((s) => ({ startedAt: s.startedAt, dismissed: s.feedbackPromptDismissed })),
+  );
+}
+
 export function useGoals() {
   return useAppStore((s) => s.goals);
 }
@@ -114,6 +128,10 @@ export function useAppActions() {
       dismissYearReview: s.dismissYearReview,
       dismissReminderPrompt: s.dismissReminderPrompt,
       importBackup: s.importBackup,
+      startDemo: s.startDemo,
+      endDemo: s.endDemo,
+      markIntroSeen: s.markIntroSeen,
+      dismissFeedbackPrompt: s.dismissFeedbackPrompt,
       resetAllData: s.resetAllData,
     })),
   );

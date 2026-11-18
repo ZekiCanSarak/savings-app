@@ -1,6 +1,9 @@
 import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+/** Where the web version is hosted (EAS Hosting). Used for link previews. */
+const SITE_URL = 'https://goalpot.expo.app';
+
 /**
  * Web only: the HTML shell around every page when the web version is built.
  * Runs in Node at build time, so no browser APIs here.
@@ -26,7 +29,24 @@ export default function Root({ children }: PropsWithChildren) {
           content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
         />
         <title>Goalpot</title>
-        <meta name="description" content="Track your savings goals, budget and progress." />
+        <meta
+          name="description"
+          content="Goals, a monthly plan and a budget that fits your pay. Free, no sign-up, and your data stays on your device."
+        />
+
+        {/* Link previews (WhatsApp, iMessage, social apps). They need absolute URLs. */}
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Goalpot" />
+        <meta property="og:title" content="Goalpot: save for the things you want" />
+        <meta
+          property="og:description"
+          content="Goals, a monthly plan and a budget that fits your pay. Free, no sign-up, private."
+        />
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:image" content={`${SITE_URL}/og-image.png`} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta name="twitter:card" content="summary_large_image" />
 
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />

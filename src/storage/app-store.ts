@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
+import { demoData } from '@/data/demo';
 import type {
   AboutYou,
   AppData,
@@ -42,7 +43,7 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 4;
+const STORAGE_VERSION = 5;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -87,6 +88,14 @@ type AppActions = {
    */
   importBackup: (backup: BackupData) => void;
 
+  /** Loads the sample data from "Try the demo" and skips the welcome flow. */
+  startDemo: () => void;
+  /** Clears the demo and goes to the welcome flow ("Start for real"). */
+  endDemo: () => void;
+  /** The web landing page was passed ("Get started"), so the welcome flow shows. */
+  markIntroSeen: () => void;
+  dismissFeedbackPrompt: () => void;
+
   /** Wipes everything back to a fresh install. */
   resetAllData: () => void;
 };
@@ -95,6 +104,8 @@ type AppState = AppData &
   AppActions & {
     /** True once saved data has been loaded (or loading failed). Not saved. */
     isReady: boolean;
+    /** The web landing page has been passed in this visit. Not saved. */
+    introSeen: boolean;
   };
 
 const initialData: AppData = {
@@ -114,6 +125,9 @@ const initialData: AppData = {
   paydayCheckIn: null,
   yearReviewDismissed: null,
   reminderPromptDismissed: false,
+  demo: false,
+  startedAt: null,
+  feedbackPromptDismissed: false,
   goals: [],
   contributions: [],
 };
@@ -123,6 +137,7 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       ...initialData,
       isReady: false,
+      introSeen: false,
 
       completeOnboarding: (profile, about) =>
         set((s) => ({
@@ -130,6 +145,8 @@ export const useAppStore = create<AppState>()(
           about: { ...about, askedAt: nowIsoTimestamp() },
           reminders: { ...s.reminders, ...reminderDefaultsFor(about) },
           onboardingComplete: true,
+          demo: false,
+          startedAt: nowIsoTimestamp(),
         })),
       updateProfile: (changes) => set((s) => ({ profile: { ...s.profile, ...changes } })),
 
@@ -187,7 +204,23 @@ export const useAppStore = create<AppState>()(
           // Older backups have no answers; keep this device's then.
           about: about ?? s.about,
           onboardingComplete: true,
+          demo: false,
+          startedAt: s.demo || !s.startedAt ? nowIsoTimestamp() : s.startedAt,
         })),
+
+      startDemo: () =>
+        set({
+          ...initialData,
+          ...demoData(),
+          onboardingComplete: true,
+          demo: true,
+          startedAt: nowIsoTimestamp(),
+          // Keep the demo about the app itself, not about setting things up.
+          reminderPromptDismissed: true,
+        }),
+      endDemo: () => set({ ...initialData, introSeen: true }),
+      markIntroSeen: () => set({ introSeen: true }),
+      dismissFeedbackPrompt: () => set({ feedbackPromptDismissed: true }),
 
       resetAllData: () => set(initialData),
     }),
@@ -206,6 +239,9 @@ export const useAppStore = create<AppState>()(
         paydayCheckIn: s.paydayCheckIn,
         yearReviewDismissed: s.yearReviewDismissed,
         reminderPromptDismissed: s.reminderPromptDismissed,
+        demo: s.demo,
+        startedAt: s.startedAt,
+        feedbackPromptDismissed: s.feedbackPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
       }),
@@ -215,13 +251,18 @@ export const useAppStore = create<AppState>()(
         ...current,
         ...sanitizeAppData(persisted, initialData),
       }),
-      migrate: (persisted) => {
+      migrate: (persisted, version) => {
         // v1 → v2 added `about`; v2 → v3 added appearance, appLock, paydayCheckIn,
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
-        // about.paySchedule. Nothing to convert:
+        // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
-        return persisted as AppData;
+        const data = persisted as AppData;
+        // Existing users start their "after a few days" feedback clock now.
+        if (version < 5 && data?.onboardingComplete && !data.startedAt) {
+          return { ...data, startedAt: nowIsoTimestamp() };
+        }
+        return data;
       },
       // Runs after loading finishes — also when it fails, so the app never
       // gets stuck on the splash screen (it starts with empty data instead).

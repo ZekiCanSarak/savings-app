@@ -31,6 +31,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Export / import data (Settings, all platforms): JSON backup file; import asks before replacing
 - [x] Payday check-in on Home, "What if" planner on goal detail, take money out, saving streaks + "Your months" history, split a lump sum, reached goals shelf, light/dark switch, year in review, Face ID / passcode lock (phone only)
 - [x] Personalisation ("About you"): saving focus, pay frequency + payday, emergency fund, budget style, guidance level, confetti. Asked in onboarding, editable in Settings, Home invites existing users to answer
+- [x] Sharing: web landing page for first-time visitors, "Try the demo" with sample data, feedback form (Home card after 5 days, Settings, landing), link preview image
 
 Update this list as features land.
 
@@ -56,6 +57,15 @@ Update this list as features land.
 - On web, Budget's "Tips for you" card starts closed and opens on tap (`TipsSection collapsible`); the phone app shows the full list.
 - The web tab bar (`app-tabs.web.tsx`) sits below the screens, not over them, and pads for the home indicator, so `BottomTabInset` is 0 on web.
 - Commands: `npm run preview:web` (build + serve at http://localhost:8081), `npm run deploy:web` (build + `eas deploy --prod` to EAS Hosting; needs `npx eas-cli login` once).
+
+## Landing page, demo and feedback
+
+- **Landing page** (`components/landing/landing-page.web.tsx`; `landing-page.tsx` is a native stub returning null): shown by `onboarding.tsx` on web to visitors who haven't finished onboarding, unless opened as an installed home-screen app (`display-mode: standalone` / `navigator.standalone`) or already passed this visit (`introSeen`, in the store but **not saved**). "Get started" → `markIntroSeen`; "Try the demo" → `startDemo`.
+- Landing screenshots live in `assets/images/landing/*-light.png` / `*-dark.png` (demo data, 390 × 844 @2x, without the demo banner), picked by colour scheme. Retake them when those screens change a lot. `public/og-image.png` (1200 × 630) is the link preview; the `og:` tags in `+html.tsx` need the absolute `SITE_URL`.
+- **Demo** (`data/demo.ts`, `startDemo` / `endDemo`): `demoData()` builds a made-up saver ("Alex") relative to today. `AppData.demo` shows `DemoBanner` at the top of every tab screen (`Screen inTabs`); "Start for real" confirms, clears everything and opens the welcome flow. The welcome screen's first step also offers the demo (phones too). Importing a backup or finishing onboarding turns `demo` off.
+- **Feedback** (`constants/feedback.ts` → `FEEDBACK_URL`, a Google Form): `services/feedback.ts` opens it (new tab on web). Home's `FeedbackCard` shows once, `FEEDBACK_PROMPT_DAYS` after `startedAt`, never in the demo, and either button sets `feedbackPromptDismissed`. Settings and the landing page link to it too. An empty `FEEDBACK_URL` hides all of these.
+- `startedAt` is set by onboarding and imports (v4 → v5 migration sets it to now for existing users). `demo`, `startedAt` and `feedbackPromptDismissed` are device settings, not in backups.
+- `services/confirm.ts` has the shared yes/no dialog (`window.confirm` on web).
 
 ## Personalisation ("About you")
 
@@ -83,7 +93,7 @@ Update this list as features land.
 - **Year in review** (`app/year-review.tsx?year=`, `utils/year-review.ts`): net saved, savings count, goals reached (`goalReachedOn`), best month, longest streak. Home's card shows in December (this year) and January (last year) until `yearReviewDismissed`; Settings and Budget link to it any time.
 - **Appearance** (`AppData.appearance`): `hooks/use-color-scheme(.web).ts` return the choice or the system setting, and the root layout calls `Appearance.setColorScheme` on phones so native UI matches. Always get light/dark from `@/hooks/use-color-scheme` (or `useTheme`), never `useColorScheme` from react-native.
 - **App lock** (`AppData.appLock`, phone only): `services/app-lock.ts` is the only file importing `expo-local-authentication` (web stub: `app-lock.web.ts`). `components/app-lock-gate.tsx` (root layout, after onboarding) shows a native `Modal` lock screen at launch and on returning from the background (not on `inactive`, which the Face ID prompt itself triggers). Turning the lock on or off asks for authentication first; with no passcode set up it explains instead.
-- Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`) are not in backups; withdrawals and `payWeekday` are.
+- Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`, `demo`, `startedAt`, `feedbackPromptDismissed`) are not in backups; withdrawals and `payWeekday` are.
 - Month numbers in `YearMonth` are 0–11 (JavaScript `Date`); `'YYYY-MM'` keys need `month + 1`.
 
 ## Export / import
@@ -123,7 +133,8 @@ src/
   app/                  Screens. Each file is a route (Expo Router).
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
     +html.tsx           Web only: HTML shell with the PWA tags
-    onboarding.tsx      First-launch welcome flow (8 steps, question steps can be skipped)
+    onboarding.tsx      First-launch welcome flow (8 steps, question steps can be skipped);
+                        on web, first shows the landing page
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
     reminder-setup.tsx  Modal: explains reminders, then asks for notification permission
@@ -154,6 +165,9 @@ src/
                         reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
     home/               savings-summary.tsx (hero total + stat tiles), payday-check-in.tsx,
                         streak-card.tsx, year-review-card.tsx
+    landing/            landing-page.web.tsx (web landing page), landing-page.tsx (native stub)
+    demo/               demo-banner.tsx ("You're looking at sample data")
+    feedback/           feedback-card.tsx (Home, once after a few days)
     app-lock-gate.tsx   Face ID / passcode lock screen (phone only, in root layout)
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
@@ -161,10 +175,12 @@ src/
     themed-view.tsx     View that follows light/dark theme
   data/
     tips.ts             Saving tips + income levels per currency (edit freely)
+    demo.ts             Sample data for "Try the demo"
   constants/
     theme.ts            Colours, spacing, fonts
     currencies.ts       Currencies the user can choose
     goal-emojis.ts      Emojis offered for goals
+    feedback.ts         FEEDBACK_URL (the Google Form) and when Home asks
   hooks/
     use-app-data.ts     Hooks screens use to read/change app data
     use-reminder-scheduler.ts   Reschedules the reminder when data changes
@@ -177,6 +193,8 @@ src/
     backup-file.web.ts  Same for web (share sheet / download, file input)
     app-lock.ts         The ONLY file that imports expo-local-authentication
     app-lock.web.ts     Web stand-in (lock not supported)
+    feedback.ts         Opens the feedback form
+    confirm.ts          Yes/no dialog (Alert on phones, window.confirm on web)
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
     sanitize.ts         Repairs loaded data so a bad save can't crash the app
@@ -197,9 +215,10 @@ src/
     streaks.ts          monthlyHistory, currentStreak, longestStreak
     split.ts            splitEvenly, splitByNeed
     year-review.ts      yearReview, goalReachedOn, reviewYearToShow
+    feedback.ts         shouldAskForFeedback
     id.ts               createId
 assets/                 Images, icons, splash
-public/                 Copied to the web site root: manifest.json, PWA icons
+public/                 Copied to the web site root: manifest.json, PWA icons, og-image.png
 ```
 
 Add `src/components/<feature>/` for components used by one feature only (e.g. `components/goals/goal-card.tsx`). Use the shared `Button` and `TextField` from `components/ui/` for forms, rather than making new ones.

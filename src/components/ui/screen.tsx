@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { DemoBanner } from '@/components/demo/demo-banner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { BottomTabInset, MaxContentWidth, ScreenPadding, Spacing } from '@/constants/theme';
@@ -33,6 +34,7 @@ export function Screen({ title, subtitle, headerRight, inTabs = true, keyboard =
       ]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag">
+      {inTabs && <DemoBanner />}
       {(title || headerRight) && (
         <View style={styles.header}>
           <View style={styles.headerText}>

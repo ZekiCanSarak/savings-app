@@ -152,6 +152,12 @@ export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
       ? (saved.yearReviewDismissed as number)
       : null,
     reminderPromptDismissed: saved.reminderPromptDismissed === true,
+    demo: saved.demo === true,
+    startedAt:
+      typeof saved.startedAt === 'string' && !Number.isNaN(Date.parse(saved.startedAt))
+        ? saved.startedAt
+        : null,
+    feedbackPromptDismissed: saved.feedbackPromptDismissed === true,
     goals,
     contributions: sanitizeContributions(saved.contributions, new Set(goals.map((g) => g.id))),
   };

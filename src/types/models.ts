@@ -131,6 +131,12 @@ export type AppData = {
   yearReviewDismissed: number | null;
   /** The user tapped "No thanks" on the Home reminders suggestion. */
   reminderPromptDismissed: boolean;
+  /** Sample data from "Try the demo" is loaded (a banner offers "Start for real"). */
+  demo: boolean;
+  /** When the user finished the welcome flow (or this was first saved). Times the feedback card. */
+  startedAt: IsoTimestamp | null;
+  /** The user answered or closed Home's one-time "What do you think?" card. */
+  feedbackPromptDismissed: boolean;
   goals: SavingsGoal[];
   contributions: Contribution[];
 };

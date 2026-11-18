@@ -10,6 +10,7 @@ import {
   PayQuestion,
   QUESTIONS,
 } from '@/components/profile/about-questions';
+import { LandingPage } from '@/components/landing/landing-page';
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
 import { CurrencyPicker } from '@/components/profile/currency-picker';
 import { ThemedText } from '@/components/themed-text';
@@ -19,7 +20,7 @@ import { TextButton } from '@/components/ui/text-button';
 import { TextField } from '@/components/ui/text-field';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useAppActions } from '@/hooks/use-app-data';
+import { useAppActions, useIntroSeen } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
 import type { AboutYou, CurrencyCode } from '@/types/models';
 import { DEFAULT_ABOUT } from '@/utils/personal';
@@ -52,6 +53,13 @@ const QUESTION_FOR: Partial<Record<Step, { title: string; intro: string }>> = {
   guidance: QUESTIONS.guidance,
 };
 
+/** Opened from the home screen icon (an installed web app) rather than in a browser tab. */
+function isInstalledWebApp(): boolean {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
+  const nav = window.navigator as Navigator & { standalone?: boolean };
+  return window.matchMedia?.('(display-mode: standalone)').matches || nav.standalone === true;
+}
+
 /**
  * Welcome flow shown the first time the app opens (see the guard in _layout.tsx).
  * Name → currency → pay → monthly income after tax, then the "About you"
@@ -59,7 +67,10 @@ const QUESTION_FOR: Partial<Record<Step, { title: string; intro: string }>> = {
  */
 export default function OnboardingScreen() {
   const theme = useTheme();
-  const { completeOnboarding } = useAppActions();
+  const { completeOnboarding, startDemo, markIntroSeen } = useAppActions();
+  const introSeen = useIntroSeen();
+  // First-time web visitors see what Goalpot is before being asked anything.
+  const showLanding = Platform.OS === 'web' && !introSeen && !isInstalledWebApp();
 
   const [step, setStep] = useState(0);
   const [name, setName] = useState('');
@@ -123,6 +134,8 @@ export default function OnboardingScreen() {
     );
   }
 
+  if (showLanding) return <LandingPage onGetStarted={markIntroSeen} onTryDemo={startDemo} />;
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
@@ -165,6 +178,16 @@ export default function OnboardingScreen() {
                   returnKeyType="next"
                   onSubmitEditing={() => handleNext()}
                 />
+                <View style={styles.demo}>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    Just looking?
+                  </ThemedText>
+                  <TextButton
+                    title="Try the demo with sample data"
+                    accessibilityHint="Opens the app filled with made-up goals and savings"
+                    onPress={startDemo}
+                  />
+                </View>
               </>
             )}
 
@@ -314,6 +337,12 @@ const styles = StyleSheet.create({
   },
   skip: {
     alignItems: 'center',
+  },
+  demo: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: Spacing.two,
   },
   footer: {
     flexDirection: 'row',

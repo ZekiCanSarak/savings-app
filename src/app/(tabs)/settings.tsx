@@ -37,6 +37,7 @@ import {
 } from '@/utils/personal';
 import { describePaySchedule } from '@/utils/payday';
 import { ordinal, weekdayName } from '@/utils/reminders';
+import { feedbackEnabled, openFeedback } from '@/services/feedback';
 import { defaultReviewYear } from '@/utils/year-review';
 import {
   amountToInputText,
@@ -353,6 +354,20 @@ export default function SettingsScreen() {
       {notificationsSupported && (
         <Card title="Reminders" subtitle="Changes here save straight away." index={2}>
           <ReminderSettingsSection />
+        </Card>
+      )}
+
+      {feedbackEnabled && (
+        <Card
+          title="Help improve Goalpot"
+          subtitle="Something confusing, missing or great? A minute of feedback makes a real difference."
+          index={3}>
+          <Button
+            title="Send feedback"
+            variant="secondary"
+            onPress={openFeedback}
+            accessibilityHint="Opens a short feedback form"
+          />
         </Card>
       )}
 
