@@ -29,6 +29,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Reminders: local notifications (weekly/monthly at a chosen time), explained before asking permission, about the goal furthest behind schedule; rescheduled on every data change; same messages on Home
 - [x] Web version as a PWA ("Goalpot"): static web build, manifest + icons, full screen from the iPhone home screen, deployed with EAS Hosting. Notifications are phone-only; on web the Reminders section is hidden and reminders show on Home
 - [x] Export / import data (Settings, all platforms): JSON backup file; import asks before replacing
+- [x] Payday check-in on Home, "What if" planner on goal detail, take money out, saving streaks + "Your months" history, split a lump sum, reached goals shelf, light/dark switch, year in review, Face ID / passcode lock (phone only)
 - [x] Personalisation ("About you"): saving focus, pay frequency + payday, emergency fund, budget style, guidance level, confetti. Asked in onboarding, editable in Settings, Home invites existing users to answer
 
 Update this list as features land.
@@ -42,6 +43,7 @@ Update this list as features land.
 - React Compiler and typed routes are enabled (`app.json` → `experiments`).
 - **State + storage:** Zustand (`zustand`) with its `persist` middleware, which saves to `@react-native-async-storage/async-storage`. See "Data layer" below.
 - **Charts:** `react-native-gifted-charts`, which draws with `react-native-svg` and uses `expo-linear-gradient` for area fills. Both are in Expo Go, and it renders the same on iOS, Android and web. We chose it over `victory-native` (Skia-based), which would need fonts loaded for axis labels and CanvasKit set up for web: more setup for no benefit at our data sizes. Simple bars (like Home's progress-by-goal) are plain `View`s, which give full control over labels and accessibility.
+- **App lock:** `expo-local-authentication` (Face ID / fingerprint / passcode), in Expo Go. Phone only.
 - **Files (export/import):** `expo-file-system` (`File`, `Paths`), `expo-sharing`, `expo-document-picker`, all in Expo Go.
 - **Notifications:** `expo-notifications`, used for **local** scheduled notifications only. There's no server and no push tokens: remote push doesn't work in Expo Go on Android since SDK 53, while local notifications do. Don't call push-token APIs (`getExpoPushTokenAsync`, `getDevicePushTokenAsync`), because they throw in Expo Go on Android. The two yellow "not fully supported in Expo Go" warnings at startup are expected.
 
@@ -68,6 +70,20 @@ Update this list as features land.
 - Questions live in `components/profile/about-questions.tsx` (`QUESTIONS` wording plus one component per question, built on `components/ui/option-list.tsx`). Onboarding shows one per step with "Skip this question", and `app/about-you.tsx` (modal, from Settings and Home) shows all of them and saves as they're tapped.
 - Tips can have `topics` (`TipTopic`); `tipsFor(level, answers)` puts matching tips first. The answer-matched tips sit at the top of `data/tips.ts`.
 - `about` is in backups (`BackupData.about`, optional so older backups still import; then this device's answers are kept) and is reset by "Reset all data".
+
+## Saving features
+
+- **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
+- **Payday check-in** (`components/home/payday-check-in.tsx`, `utils/payday.ts`): when `lastPayday()` was within `CHECK_IN_DAYS` and `paydayCheckIn` isn't that date, Home offers one-tap saving of the suggested per-payday amount to `goalsNeedingAttention()[0]`. Monthly pay uses `payday` (clamped to short months); weekly / 4-weekly use `payWeekday` (asked in the pay question). 4-weekly can't know which week, so it waits 3+ weeks after an answer.
+- **"What if" planner** (`components/goals/what-if-planner.tsx`, `utils/planner.ts`): ‹ › steps a monthly amount (`plannerStep`) and shows the finish month and months early/late against the target date. Counts this month as the first payment.
+- **Streaks and history** (`utils/streaks.ts`): a month counts when something was saved in it (withdrawals don't break a streak). `currentStreak` still counts last month's run if nothing is saved yet this month. Home has `StreakCard`; Budget has "Your months" (`MonthHistory`, ✓ = at least the suggested saving).
+- **Split money** (`app/split-money.tsx`, `utils/split.ts`): one amount shared between unfinished goals, by need (`splitByNeed`, capped at what each needs), evenly, or custom; shares must add up exactly. Saves one contribution per goal (note "Split" unless given). Offered on Home and the Goals list when 2+ goals are unfinished.
+- **Reached shelf:** the Goals list shows unfinished goals, then a collapsible "Reached 🎉" section.
+- **Year in review** (`app/year-review.tsx?year=`, `utils/year-review.ts`): net saved, savings count, goals reached (`goalReachedOn`), best month, longest streak. Home's card shows in December (this year) and January (last year) until `yearReviewDismissed`; Settings and Budget link to it any time.
+- **Appearance** (`AppData.appearance`): `hooks/use-color-scheme(.web).ts` return the choice or the system setting, and the root layout calls `Appearance.setColorScheme` on phones so native UI matches. Always get light/dark from `@/hooks/use-color-scheme` (or `useTheme`), never `useColorScheme` from react-native.
+- **App lock** (`AppData.appLock`, phone only): `services/app-lock.ts` is the only file importing `expo-local-authentication` (web stub: `app-lock.web.ts`). `components/app-lock-gate.tsx` (root layout, after onboarding) shows a native `Modal` lock screen at launch and on returning from the background (not on `inactive`, which the Face ID prompt itself triggers). Turning the lock on or off asks for authentication first; with no passcode set up it explains instead.
+- Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`) are not in backups; withdrawals and `payWeekday` are.
+- Month numbers in `YearMonth` are 0–11 (JavaScript `Date`); `'YYYY-MM'` keys need `month + 1`.
 
 ## Export / import
 
@@ -111,6 +127,8 @@ src/
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
     reminder-setup.tsx  Modal: explains reminders, then asks for notification permission
     about-you.tsx       Modal: all "About you" questions, saved as they're tapped
+    split-money.tsx     Modal: share one amount between several goals
+    year-review.tsx     Modal: a year's saving at a glance (?year=2026)
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -127,12 +145,15 @@ src/
                         confetti.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx, about-questions.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
-                        contribution-row.tsx, goal-celebration.tsx
+                        contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
-    budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx
+    budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx,
+                        month-history.tsx
     reminders/          reminder-settings.tsx (Settings section), reminder-messages.tsx (Home),
                         reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
-    home/               savings-summary.tsx (hero total + stat tiles)
+    home/               savings-summary.tsx (hero total + stat tiles), payday-check-in.tsx,
+                        streak-card.tsx, year-review-card.tsx
+    app-lock-gate.tsx   Face ID / passcode lock screen (phone only, in root layout)
     app-tabs.tsx        Tab bar for iOS/Android (NativeTabs)
     app-tabs.web.tsx    Tab bar for web, kept in sync with app-tabs.tsx
     themed-text.tsx     Text that follows light/dark theme
@@ -153,6 +174,8 @@ src/
     notifications.web.ts  Web stand-in with the same exports (does nothing)
     backup-file.ts      Save/pick a backup file (share sheet, document picker)
     backup-file.web.ts  Same for web (share sheet / download, file input)
+    app-lock.ts         The ONLY file that imports expo-local-authentication
+    app-lock.web.ts     Web stand-in (lock not supported)
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
     sanitize.ts         Repairs loaded data so a bad save can't crash the app
@@ -168,6 +191,11 @@ src/
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
     backup.ts           createBackup / parseBackup for export and import
     personal.ts         "About you" options and what each answer changes
+    payday.ts           lastPayday, paydayToCheckIn
+    planner.ts          whatIf, plannerStep, plannerStart
+    streaks.ts          monthlyHistory, currentStreak, longestStreak
+    split.ts            splitEvenly, splitByNeed
+    year-review.ts      yearReview, goalReachedOn, reviewYearToShow
     id.ts               createId
 assets/                 Images, icons, splash
 public/                 Copied to the web site root: manifest.json, PWA icons
@@ -184,7 +212,7 @@ Navigation patterns:
 - When deleting the item a screen shows, navigate away first and delete second.
 - Set a page's header title from inside it with `<Stack.Screen options={{ title }} />`.
 - Goal target dates are months: the month picker stores the last day of the chosen month.
-- Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by deleting the entry (no editing, and no negative amounts).
+- Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by deleting the entry (no editing, and no negative amounts; money taken out is a separate `withdrawal` entry).
 
 Charts (follow these for every new chart):
 - **Pick the form first.** One headline number → a stat tile or hero figure, not a chart. Comparing goals → ranked horizontal bars on one shared scale, most complete first. Change over time → a line. Avoid donuts and pies, and never use two y-axes.

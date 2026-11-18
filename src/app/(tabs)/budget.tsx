@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 
 import { AdviceNote } from '@/components/budget/advice-note';
 import { BudgetSplitChart } from '@/components/budget/budget-split-chart';
+import { MonthHistory } from '@/components/budget/month-history';
 import { TipsSection } from '@/components/budget/tips-section';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,8 @@ import { budgetSplit, incomeLevel, savedThisMonth, tipsFor } from '@/utils/budge
 import { parseIsoDate, savingMonthsLeft, todayIsoDate } from '@/utils/dates';
 import { isGoalComplete, monthlyAmountNeeded } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
+import { currentStreak } from '@/utils/streaks';
+import { defaultReviewYear } from '@/utils/year-review';
 import { BUDGET_STYLE_INFO, perPayPeriod, wantsGuidance } from '@/utils/personal';
 
 /** Short explanations for people who asked for help ("I'm new to this"). */
@@ -102,6 +105,7 @@ function BudgetContent({
 }) {
   const money = (amount: number) => formatMoney(amount, currency);
   const today = todayIsoDate();
+  const streak = currentStreak(contributions, today);
   const monthName = parseIsoDate(today).toLocaleDateString('en-GB', { month: 'long' });
 
   const style = BUDGET_STYLE_INFO[about.budgetStyle];
@@ -202,6 +206,22 @@ function BudgetContent({
         )}
       </Card>
       )}
+
+      <Card
+        title="Your months"
+        subtitle={streak.months >= 2 ? `🔥 ${streak.months} months in a row` : undefined}
+        index={2}
+        action={
+          <TextButton
+            title="Year in review"
+            accessibilityHint="Opens a summary of your year's saving"
+            onPress={() =>
+              router.push({ pathname: '/year-review', params: { year: String(defaultReviewYear(today)) } })
+            }
+          />
+        }>
+        <MonthHistory contributions={contributions} currency={currency} suggested={noIncome ? 0 : suggested} />
+      </Card>
 
       {guided && (
         <Card title="Good to know" index={2}>

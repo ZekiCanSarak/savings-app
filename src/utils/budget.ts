@@ -1,6 +1,7 @@
 import { INCOME_BANDS, TIPS, type IncomeLevel, type Tip, type TipTopic } from '@/data/tips';
 import type { AboutYou, BudgetStyle, Contribution, CurrencyCode, IsoDate } from '@/types/models';
 import { parseIsoDate, todayIsoDate } from '@/utils/dates';
+import { signedAmount } from '@/utils/goals';
 import { BUDGET_STYLE_INFO } from '@/utils/personal';
 
 /**
@@ -31,10 +32,14 @@ export function budgetSplit(monthlyIncome: number, style: BudgetStyle = '50-30-2
   return { needs: monthlyIncome - wants - savings, wants, savings };
 }
 
-/** Total saved across all goals in the calendar month containing `today`. */
+/**
+ * Total saved across all goals in the calendar month containing `today`,
+ * minus anything taken out that month (never below 0).
+ */
 export function savedThisMonth(contributions: Contribution[], today: IsoDate = todayIsoDate()): number {
   const month = today.slice(0, 7); // 'YYYY-MM'
-  return contributions.reduce((sum, c) => (c.date.startsWith(month) ? sum + c.amount : sum), 0);
+  const net = contributions.reduce((sum, c) => (c.date.startsWith(month) ? sum + signedAmount(c) : sum), 0);
+  return Math.max(0, net);
 }
 
 /** Which tip group an income falls in. Income is in minor units. */

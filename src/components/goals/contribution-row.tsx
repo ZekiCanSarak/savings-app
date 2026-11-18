@@ -13,16 +13,19 @@ type ContributionRowProps = {
   onDelete: () => void;
 };
 
-/** One line in a goal's savings history, with a delete button. */
+/** One line in a goal's savings history, with a delete button. Money taken out shows as −£50. */
 export function ContributionRow({ contribution, currency, onDelete }: ContributionRowProps) {
   const theme = useTheme();
   const amount = formatMoney(contribution.amount, currency);
   const day = formatRelativeDay(contribution.date);
+  const out = contribution.withdrawal === true;
 
   return (
     <View style={styles.row}>
       <View style={styles.details}>
-        <ThemedText type="smallBold">+{amount}</ThemedText>
+        <ThemedText type="smallBold" themeColor={out ? 'danger' : 'text'}>
+          {out ? `−${amount} taken out` : `+${amount}`}
+        </ThemedText>
         <ThemedText type="small" themeColor="textSecondary" numberOfLines={2}>
           {day}
           {contribution.note ? ` · ${contribution.note}` : ''}
@@ -30,7 +33,7 @@ export function ContributionRow({ contribution, currency, onDelete }: Contributi
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Delete ${amount} saved ${day}`}
+        accessibilityLabel={`Delete ${amount} ${out ? 'taken out' : 'saved'} ${day}`}
         onPress={onDelete}
         hitSlop={6}
         style={({ pressed }) => [

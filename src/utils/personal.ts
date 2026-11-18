@@ -18,6 +18,7 @@ export const DEFAULT_ABOUT: AboutYou = {
   focus: null,
   payFrequency: null,
   payday: null,
+  payWeekday: null,
   emergencyFund: null,
   budgetStyle: '50-30-20',
   guidance: null,
@@ -119,7 +120,10 @@ export function reminderDefaultsFor(about: AboutYou): Partial<ReminderSettings> 
     return { frequency: 'monthly', dayOfMonth: about.payday >= 28 ? 1 : about.payday + 1 };
   }
   if (about.payFrequency === 'weekly' || about.payFrequency === 'four-weekly') {
-    return { frequency: 'weekly' };
+    // The day after payday (weekdays are 1 = Sunday … 7 = Saturday).
+    return about.payWeekday !== null
+      ? { frequency: 'weekly', weekday: (about.payWeekday % 7) + 1 }
+      : { frequency: 'weekly' };
   }
   return {};
 }

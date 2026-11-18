@@ -37,8 +37,10 @@ export type SavingsGoal = {
 export type Contribution = {
   id: string;
   goalId: string;
-  /** Amount saved in minor units. Always positive. */
+  /** Amount in minor units. Always positive; `withdrawal` says which way it went. */
   amount: number;
+  /** True for money taken out of the goal ("Take money out"). Missing = money saved. */
+  withdrawal?: true;
   /** The day the money was saved. */
   date: IsoDate;
   note?: string;
@@ -83,6 +85,8 @@ export type AboutYou = {
   payFrequency: PayFrequency | null;
   /** Day of the month the user is paid (1–31). Only used when paid monthly. */
   payday: number | null;
+  /** Weekday the user is paid, 1 = Sunday … 7 = Saturday. Used when paid weekly or every 4 weeks. */
+  payWeekday: number | null;
   emergencyFund: EmergencyFundStatus | null;
   budgetStyle: BudgetStyle;
   guidance: GuidanceLevel | null;
@@ -94,6 +98,9 @@ export type AboutYou = {
   emergencyPromptDismissed: boolean;
 };
 
+/** 'system' follows the phone's light/dark setting. */
+export type Appearance = 'system' | 'light' | 'dark';
+
 /** Everything that gets saved to the device. */
 export type AppData = {
   /** False until the user finishes the welcome flow. */
@@ -101,6 +108,14 @@ export type AppData = {
   profile: UserProfile;
   reminders: ReminderSettings;
   about: AboutYou;
+  /** Light / dark mode choice (Settings → Appearance). */
+  appearance: Appearance;
+  /** Ask for Face ID / fingerprint / passcode when the app opens. Phone only. */
+  appLock: boolean;
+  /** The payday the user last answered the Home check-in for ('YYYY-MM-DD'). */
+  paydayCheckIn: IsoDate | null;
+  /** Year whose "Year in review" card the user closed on Home. */
+  yearReviewDismissed: number | null;
   /** The user tapped "No thanks" on the Home reminders suggestion. */
   reminderPromptDismissed: boolean;
   goals: SavingsGoal[];

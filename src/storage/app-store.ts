@@ -7,6 +7,7 @@ import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import type {
   AboutYou,
   AppData,
+  Appearance,
   Contribution,
   ReminderSettings,
   SavingsGoal,
@@ -41,7 +42,7 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 2;
+const STORAGE_VERSION = 3;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -60,6 +61,8 @@ type AppActions = {
 
   /** Returns the new contribution's id. */
   addContribution: (contribution: NewContribution) => string;
+  /** Several at once, e.g. a lump sum split across goals. */
+  addContributions: (contributions: NewContribution[]) => void;
   updateContribution: (id: string, changes: Partial<NewContribution>) => void;
   deleteContribution: (id: string) => void;
 
@@ -70,6 +73,12 @@ type AppActions = {
    * schedule follows the pay answers (e.g. the day after payday).
    */
   updateAbout: (changes: Partial<AboutYou>) => void;
+
+  setAppearance: (appearance: Appearance) => void;
+  setAppLock: (enabled: boolean) => void;
+  /** The user answered Home's payday check-in for this payday. */
+  markPaydayCheckIn: (payday: string) => void;
+  dismissYearReview: (year: number) => void;
   dismissReminderPrompt: () => void;
 
   /**
@@ -100,6 +109,10 @@ const initialData: AppData = {
     minute: 0,
   },
   about: DEFAULT_ABOUT,
+  appearance: 'system',
+  appLock: false,
+  paydayCheckIn: null,
+  yearReviewDismissed: null,
   reminderPromptDismissed: false,
   goals: [],
   contributions: [],
@@ -138,6 +151,10 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ contributions: [...s.contributions, { ...contribution, id }] }));
         return id;
       },
+      addContributions: (list) =>
+        set((s) => ({
+          contributions: [...s.contributions, ...list.map((c) => ({ ...c, id: createId() }))],
+        })),
       updateContribution: (id, changes) =>
         set((s) => ({
           contributions: s.contributions.map((c) => (c.id === id ? { ...c, ...changes } : c)),
@@ -156,6 +173,11 @@ export const useAppStore = create<AppState>()(
           return { about, reminders };
         }),
       dismissReminderPrompt: () => set({ reminderPromptDismissed: true }),
+
+      setAppearance: (appearance) => set({ appearance }),
+      setAppLock: (appLock) => set({ appLock }),
+      markPaydayCheckIn: (paydayCheckIn) => set({ paydayCheckIn }),
+      dismissYearReview: (yearReviewDismissed) => set({ yearReviewDismissed }),
 
       importBackup: ({ profile, goals, contributions, about }) =>
         set((s) => ({
@@ -179,6 +201,10 @@ export const useAppStore = create<AppState>()(
         profile: s.profile,
         reminders: s.reminders,
         about: s.about,
+        appearance: s.appearance,
+        appLock: s.appLock,
+        paydayCheckIn: s.paydayCheckIn,
+        yearReviewDismissed: s.yearReviewDismissed,
         reminderPromptDismissed: s.reminderPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
@@ -190,8 +216,10 @@ export const useAppStore = create<AppState>()(
         ...sanitizeAppData(persisted, initialData),
       }),
       migrate: (persisted) => {
-        // v1 → v2 added `about`. Nothing to convert: sanitizeAppData fills it with
-        // defaults, and `askedAt: null` makes Home invite the user to answer.
+        // v1 → v2 added `about`; v2 → v3 added appearance, appLock, paydayCheckIn,
+        // yearReviewDismissed, payWeekday and withdrawals. Nothing to convert:
+        // sanitizeAppData fills new fields with defaults, and `askedAt: null`
+        // makes Home invite v1 users to answer the "About you" questions.
         return persisted as AppData;
       },
       // Runs after loading finishes — also when it fails, so the app never

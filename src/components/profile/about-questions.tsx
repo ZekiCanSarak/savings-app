@@ -1,6 +1,7 @@
 import { StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
+import { ChoiceChips } from '@/components/ui/choice-chips';
 import { OptionList } from '@/components/ui/option-list';
 import { ValueStepper } from '@/components/ui/value-stepper';
 import { Spacing } from '@/constants/theme';
@@ -20,6 +21,17 @@ import {
   PAY_INFO,
 } from '@/utils/personal';
 import { ordinal } from '@/utils/reminders';
+
+// Monday first (UK). Values use expo-notifications' numbering, 1 = Sunday.
+const WEEKDAYS = [
+  { value: 2, label: 'Mon', accessibilityLabel: 'Monday' },
+  { value: 3, label: 'Tue', accessibilityLabel: 'Tuesday' },
+  { value: 4, label: 'Wed', accessibilityLabel: 'Wednesday' },
+  { value: 5, label: 'Thu', accessibilityLabel: 'Thursday' },
+  { value: 6, label: 'Fri', accessibilityLabel: 'Friday' },
+  { value: 7, label: 'Sat', accessibilityLabel: 'Saturday' },
+  { value: 1, label: 'Sun', accessibilityLabel: 'Sunday' },
+];
 
 /**
  * The "About you" questions. The welcome flow shows one per step, and the
@@ -72,11 +84,20 @@ export function FocusQuestion({ value, onChange }: QuestionProps<SavingFocus>) {
 type PayQuestionProps = {
   frequency: PayFrequency | null;
   payday: number | null;
+  payWeekday: number | null;
   onChangeFrequency: (value: PayFrequency) => void;
   onChangePayday: (value: number) => void;
+  onChangePayWeekday: (value: number) => void;
 };
 
-export function PayQuestion({ frequency, payday, onChangeFrequency, onChangePayday }: PayQuestionProps) {
+export function PayQuestion({
+  frequency,
+  payday,
+  payWeekday,
+  onChangeFrequency,
+  onChangePayday,
+  onChangePayWeekday,
+}: PayQuestionProps) {
   // Wraps round: ‹ from the 1st goes to the 31st and back.
   const step = (direction: 1 | -1) => {
     const current = payday ?? (direction === 1 ? 0 : 32);
@@ -102,6 +123,15 @@ export function PayQuestion({ frequency, payday, onChangeFrequency, onChangePayd
           onNext={() => step(1)}
           previousLabel="Earlier day"
           nextLabel="Later day"
+        />
+      )}
+      {(frequency === 'weekly' || frequency === 'four-weekly') && (
+        // ChoiceChips needs a value; 0 matches no chip until one is picked.
+        <ChoiceChips<number>
+          label="Which day are you paid?"
+          options={WEEKDAYS}
+          value={payWeekday ?? 0}
+          onChange={onChangePayWeekday}
         />
       )}
     </View>

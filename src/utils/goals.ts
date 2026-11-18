@@ -13,9 +13,18 @@ export function contributionsForGoal(goalId: string, contributions: Contribution
     .sort((a, b) => (a.date === b.date ? 0 : a.date < b.date ? 1 : -1));
 }
 
-/** Total saved toward a goal so far. */
+/** A contribution's effect on the total: negative for money taken out. */
+export function signedAmount(contribution: Contribution): number {
+  return contribution.withdrawal ? -contribution.amount : contribution.amount;
+}
+
+/** Total saved toward a goal so far (money saved minus money taken out, never below 0). */
 export function totalSaved(goalId: string, contributions: Contribution[]): number {
-  return contributions.reduce((sum, c) => (c.goalId === goalId ? sum + c.amount : sum), 0);
+  const total = contributions.reduce(
+    (sum, c) => (c.goalId === goalId ? sum + signedAmount(c) : sum),
+    0,
+  );
+  return Math.max(0, total);
 }
 
 /** How much is still left to save. Never below 0, even if the user saved extra. */

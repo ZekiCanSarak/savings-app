@@ -6,6 +6,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
+import { WhatIfPlanner } from '@/components/goals/what-if-planner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
@@ -112,8 +113,10 @@ export default function GoalDetailScreen() {
 
   function confirmDeleteContribution(entry: Contribution) {
     confirm(
-      'Delete this saving?',
-      `The ${money(entry.amount)} you saved ${relativeDayInSentence(entry.date)} will be removed from “${goal?.name}”.`,
+      entry.withdrawal ? 'Delete this entry?' : 'Delete this saving?',
+      entry.withdrawal
+        ? `The ${money(entry.amount)} you took out ${relativeDayInSentence(entry.date)} will be removed, so it counts as still in “${goal?.name}”.`
+        : `The ${money(entry.amount)} you saved ${relativeDayInSentence(entry.date)} will be removed from “${goal?.name}”.`,
       'Delete',
       () => deleteContribution(entry.id),
     );
@@ -181,6 +184,16 @@ export default function GoalDetailScreen() {
             accessibilityHint="Opens a form to log money you’ve saved"
             onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
           />
+          {progress.saved > 0 && (
+            <Button
+              title="Take money out"
+              variant="secondary"
+              accessibilityHint="Opens a form to log money you’ve taken out of this goal"
+              onPress={() =>
+                router.push({ pathname: '/add-money', params: { goalId: goal.id, mode: 'withdraw' } })
+              }
+            />
+          )}
         </Card>
 
         {!complete && goal.targetDate && progress.monthlyNeeded !== null && (
@@ -198,6 +211,18 @@ export default function GoalDetailScreen() {
                 {money(progress.remaining)} to go. Edit the goal to pick a new date.
               </ThemedText>
             )}
+          </Card>
+        )}
+
+        {!complete && (
+          <Card title="What if?" subtitle="Try a different monthly amount" index={2}>
+            <WhatIfPlanner
+              remaining={progress.remaining}
+              monthlyNeeded={progress.monthlyNeeded}
+              targetDate={goal.targetDate}
+              currency={currency}
+              payFrequency={about.payFrequency}
+            />
           </Card>
         )}
 

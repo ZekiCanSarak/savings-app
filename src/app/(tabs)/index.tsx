@@ -4,7 +4,10 @@ import { StyleSheet, View } from 'react-native';
 import { AdviceNote } from '@/components/budget/advice-note';
 import { TipCard } from '@/components/budget/tip-card';
 import { GoalProgressBars } from '@/components/charts/goal-progress-bars';
+import { PaydayCheckIn } from '@/components/home/payday-check-in';
 import { SavingsSummary } from '@/components/home/savings-summary';
+import { StreakCard } from '@/components/home/streak-card';
+import { YearReviewCard } from '@/components/home/year-review-card';
 import { ReminderMessages } from '@/components/reminders/reminder-messages';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
@@ -27,6 +30,7 @@ import { notificationsSupported } from '@/services/notifications';
 import { budgetSplit, incomeLevel, tipOfTheDay } from '@/utils/budget';
 import { summariseGoals } from '@/utils/charts';
 import { nowIsoTimestamp } from '@/utils/dates';
+import { amountRemaining } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
 import {
   emergencyFundTarget,
@@ -80,6 +84,7 @@ export default function HomeScreen() {
         : null;
   const showEmergencyCard =
     shouldSuggestEmergencyFund(about, goals) && !(goals.length === 0 && about.focus === 'emergency');
+  const unfinishedGoals = goals.filter((g) => amountRemaining(g, contributions) > 0).length;
   const subtitle =
     focus && summary.totalSaved > 0
       ? `${greeting()}. You’re ${formatMoney(summary.totalSaved, currency)} closer to ${focus.closerTo}.`
@@ -110,6 +115,9 @@ export default function HomeScreen() {
         </Card>
       )}
 
+      <PaydayCheckIn index={0} />
+      <YearReviewCard index={1} />
+
       {goals.length === 0 ? (
         starterGoal && focus ? (
           <EmptyState
@@ -132,7 +140,21 @@ export default function HomeScreen() {
         <>
           <SavingsSummary summary={summary} goalCount={goals.length} currency={currency} />
 
-          <Card title="Progress by goal" subtitle="Most complete first" index={2}>
+          <StreakCard contributions={contributions} index={2} />
+
+          <Card
+            title="Progress by goal"
+            subtitle="Most complete first"
+            index={2}
+            action={
+              unfinishedGoals >= 2 ? (
+                <TextButton
+                  title="Split money"
+                  accessibilityHint="Share one amount, like a bonus, between your goals"
+                  onPress={() => router.push('/split-money')}
+                />
+              ) : undefined
+            }>
             {summary.totalSaved === 0 && (
               <ThemedText type="small" themeColor="textSecondary">
                 Nothing saved yet. Open a goal and tap “Add money” to fill these bars.

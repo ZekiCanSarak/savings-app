@@ -1,12 +1,13 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Switch, View } from 'react-native';
 
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
 import { CurrencyPicker } from '@/components/profile/currency-picker';
 import { ReminderSettingsSection } from '@/components/reminders/reminder-settings';
 import { ThemedText } from '@/components/themed-text';
 import { Button } from '@/components/ui/button';
+import { ChoiceChips } from '@/components/ui/choice-chips';
 import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
@@ -15,13 +16,17 @@ import { Spacing } from '@/constants/theme';
 import {
   useAbout,
   useAppActions,
+  useAppearance,
+  useAppLock,
   useContributions,
   useGoals,
   useProfile,
 } from '@/hooks/use-app-data';
+import { useTheme } from '@/hooks/use-theme';
+import { appLockSupported, authenticate, lockAvailability } from '@/services/app-lock';
 import { pickBackupFile, saveBackupFile } from '@/services/backup-file';
 import { cancelAllReminders, notificationsSupported } from '@/services/notifications';
-import type { AboutYou, CurrencyCode } from '@/types/models';
+import type { AboutYou, Appearance, CurrencyCode } from '@/types/models';
 import { backupFileName, createBackup, parseBackup, type BackupData } from '@/utils/backup';
 import {
   BUDGET_STYLE_INFO,
@@ -30,7 +35,8 @@ import {
   GUIDANCE_INFO,
   PAY_INFO,
 } from '@/utils/personal';
-import { ordinal } from '@/utils/reminders';
+import { ordinal, weekdayName } from '@/utils/reminders';
+import { defaultReviewYear } from '@/utils/year-review';
 import {
   amountToInputText,
   MONEY_INPUT_MAX_LENGTH,
@@ -61,7 +67,10 @@ const NOT_ANSWERED = 'Not answered';
 function aboutSummary(about: AboutYou): { label: string; value: string }[] {
   const pay = about.payFrequency
     ? PAY_INFO[about.payFrequency].label +
-      (about.payFrequency === 'monthly' && about.payday !== null ? `, on the ${ordinal(about.payday)}` : '')
+      (about.payFrequency === 'monthly' && about.payday !== null ? `, on the ${ordinal(about.payday)}` : '') +
+      ((about.payFrequency === 'weekly' || about.payFrequency === 'four-weekly') && about.payWeekday !== null
+        ? `, on ${weekdayName(about.payWeekday)}s`
+        : '')
     : NOT_ANSWERED;
   const style = BUDGET_STYLE_INFO[about.budgetStyle];
   return [
@@ -82,7 +91,12 @@ export default function SettingsScreen() {
   const goals = useGoals();
   const contributions = useContributions();
   const about = useAbout();
-  const { updateProfile, resetAllData, importBackup } = useAppActions();
+  const appearance = useAppearance();
+  const appLock = useAppLock();
+  const theme = useTheme();
+  const { updateProfile, resetAllData, importBackup, setAppearance, setAppLock } = useAppActions();
+  const [lockMessage, setLockMessage] = useState<string | null>(null);
+  const reviewYear = defaultReviewYear();
 
   // Edits are kept here until the user taps Save.
   const [name, setName] = useState(profile.name);
@@ -123,6 +137,18 @@ export default function SettingsScreen() {
       await cancelAllReminders();
       resetAllData();
     });
+  }
+
+  async function handleLockToggle(on: boolean) {
+    setLockMessage(null);
+    if (on && (await lockAvailability()) === 'none') {
+      setLockMessage('Set up a passcode, Face ID or fingerprint on your phone first, then try again.');
+      return;
+    }
+    // Confirm it's really the phone's owner, both to turn it on and to turn it off.
+    const ok = await authenticate(on ? 'Turn on app lock' : 'Turn off app lock');
+    if (ok) setAppLock(on);
+    else setLockMessage('That didn’t work, so nothing changed.');
   }
 
   async function handleExport() {
@@ -267,6 +293,56 @@ export default function SettingsScreen() {
         />
       </Card>
 
+      <Card title="Appearance" subtitle="System follows your phone’s light or dark setting." index={2}>
+        <ChoiceChips<Appearance>
+          label="Theme"
+          value={appearance}
+          onChange={setAppearance}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: '☀️ Light', accessibilityLabel: 'Light' },
+            { value: 'dark', label: '🌙 Dark', accessibilityLabel: 'Dark' },
+          ]}
+        />
+      </Card>
+
+      {/* Phones only: a browser page can't use Face ID or the phone's passcode. */}
+      {appLockSupported && (
+        <Card
+          title="Privacy"
+          subtitle="Your goals and income stay hidden until you unlock the app."
+          index={2}>
+          <View style={styles.switchRow}>
+            <View style={styles.summaryValue}>
+              <ThemedText type="defaultBold">Lock with Face ID or passcode</ThemedText>
+              <ThemedText type="small" themeColor="textSecondary">
+                Asks each time you open the app
+              </ThemedText>
+            </View>
+            <Switch
+              value={appLock}
+              onValueChange={(on) => void handleLockToggle(on)}
+              accessibilityLabel="Lock with Face ID or passcode"
+              trackColor={{ false: theme.border, true: theme.tint }}
+            />
+          </View>
+          {lockMessage && (
+            <ThemedText type="small" themeColor="danger" accessibilityLiveRegion="polite">
+              {lockMessage}
+            </ThemedText>
+          )}
+        </Card>
+      )}
+
+      <Card title="Look back" index={2}>
+        <Button
+          title={`Your ${reviewYear} in review`}
+          variant="secondary"
+          accessibilityHint="Opens a summary of your year's saving"
+          onPress={() => router.push({ pathname: '/year-review', params: { year: String(reviewYear) } })}
+        />
+      </Card>
+
       {/* The web app can't send notifications; its reminders show on Home instead. */}
       {notificationsSupported && (
         <Card title="Reminders" subtitle="Changes here save straight away." index={2}>
@@ -316,6 +392,12 @@ const styles = StyleSheet.create({
   },
   summary: {
     gap: Spacing.two,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.three,
+    minHeight: 44,
   },
   summaryRow: {
     flexDirection: 'row',

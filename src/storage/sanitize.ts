@@ -73,6 +73,7 @@ export function sanitizeContributions(value: unknown, goalIds: Set<string>): Con
         goalId: c.goalId,
         amount: c.amount,
         date: c.date,
+        ...(c.withdrawal === true ? { withdrawal: true as const } : {}),
         ...(typeof c.note === 'string' && c.note ? { note: c.note } : {}),
       },
     ];
@@ -100,6 +101,7 @@ export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
     focus: oneOf(value.focus, ['emergency', 'purchase', 'travel', 'home', 'debt', 'habit']),
     payFrequency: oneOf(value.payFrequency, ['monthly', 'four-weekly', 'weekly', 'irregular']),
     payday: Number.isFinite(value.payday) ? clampWhole(value.payday, 1, 31, 1) : null,
+    payWeekday: Number.isFinite(value.payWeekday) ? clampWhole(value.payWeekday, 1, 7, 6) : null,
     emergencyFund: oneOf(value.emergencyFund, ['covered', 'some', 'none']),
     budgetStyle: oneOf(value.budgetStyle, ['50-30-20', '60-20-20', '70-20-10']) ?? fallback.budgetStyle,
     guidance: oneOf(value.guidance, ['guided', 'brief']),
@@ -120,6 +122,16 @@ export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
     profile: sanitizeProfile(saved.profile, defaults.profile),
     reminders: sanitizeReminders(saved.reminders, defaults.reminders),
     about: sanitizeAbout(saved.about, defaults.about),
+    appearance:
+      saved.appearance === 'light' || saved.appearance === 'dark' ? saved.appearance : 'system',
+    appLock: saved.appLock === true,
+    paydayCheckIn:
+      typeof saved.paydayCheckIn === 'string' && ISO_DATE.test(saved.paydayCheckIn)
+        ? saved.paydayCheckIn
+        : null,
+    yearReviewDismissed: Number.isSafeInteger(saved.yearReviewDismissed)
+      ? (saved.yearReviewDismissed as number)
+      : null,
     reminderPromptDismissed: saved.reminderPromptDismissed === true,
     goals,
     contributions: sanitizeContributions(saved.contributions, new Set(goals.map((g) => g.id))),

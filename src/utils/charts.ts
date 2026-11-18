@@ -1,6 +1,6 @@
 import type { Contribution, IsoDate, SavingsGoal } from '@/types/models';
 import { addDays, parseIsoDate, toIsoDate, todayIsoDate } from '@/utils/dates';
-import { amountRemaining, percentComplete, totalSaved } from '@/utils/goals';
+import { amountRemaining, percentComplete, signedAmount, totalSaved } from '@/utils/goals';
 
 /**
  * Data preparation for charts. Pure functions (no React), amounts in minor units.
@@ -52,7 +52,7 @@ export function savingsOverTime(
   let running = 0;
   for (const date of sampleDates) {
     while (index < entries.length && entries[index].date <= date) {
-      running += entries[index].amount;
+      running = Math.max(0, running + signedAmount(entries[index]));
       index += 1;
     }
     points.push({ date, total: running });

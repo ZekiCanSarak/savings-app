@@ -41,6 +41,22 @@ export function useAbout() {
   return useAppStore((s) => s.about);
 }
 
+export function useAppearance() {
+  return useAppStore((s) => s.appearance);
+}
+
+export function useAppLock() {
+  return useAppStore((s) => s.appLock);
+}
+
+export function usePaydayCheckIn() {
+  return useAppStore((s) => s.paydayCheckIn);
+}
+
+export function useYearReviewDismissed() {
+  return useAppStore((s) => s.yearReviewDismissed);
+}
+
 export function useReminderPromptDismissed() {
   return useAppStore((s) => s.reminderPromptDismissed);
 }
@@ -87,10 +103,15 @@ export function useAppActions() {
       updateGoal: s.updateGoal,
       deleteGoal: s.deleteGoal,
       addContribution: s.addContribution,
+      addContributions: s.addContributions,
       updateContribution: s.updateContribution,
       deleteContribution: s.deleteContribution,
       updateReminders: s.updateReminders,
       updateAbout: s.updateAbout,
+      setAppearance: s.setAppearance,
+      setAppLock: s.setAppLock,
+      markPaydayCheckIn: s.markPaydayCheckIn,
+      dismissYearReview: s.dismissYearReview,
       dismissReminderPrompt: s.dismissReminderPrompt,
       importBackup: s.importBackup,
       resetAllData: s.resetAllData,

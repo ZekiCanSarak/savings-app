@@ -36,7 +36,7 @@ const STEP_COUNT = STEPS.length;
 
 /** The "About you" steps can be skipped; skipping resets that answer. */
 const SKIPPED: Partial<Record<Step, Partial<AboutYou>>> = {
-  pay: { payFrequency: null, payday: null },
+  pay: { payFrequency: null, payday: null, payWeekday: null },
   focus: { focus: null },
   emergency: { emergencyFund: null },
   budget: { budgetStyle: DEFAULT_ABOUT.budgetStyle },
@@ -218,8 +218,10 @@ export default function OnboardingScreen() {
               <PayQuestion
                 frequency={about.payFrequency}
                 payday={about.payday}
+                payWeekday={about.payWeekday}
                 onChangeFrequency={(payFrequency) => answer({ payFrequency })}
                 onChangePayday={(payday) => answer({ payday })}
+                onChangePayWeekday={(payWeekday) => answer({ payWeekday })}
               />
             )}
             {stepName === 'focus' && (

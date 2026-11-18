@@ -105,6 +105,26 @@ export function validateContributionAmount(text: string): ValidationResult<numbe
   });
 }
 
+/**
+ * Money taken out of a goal: like a saving, but no more than the goal holds.
+ * `availableText` is that limit already formatted ('£340').
+ */
+export function validateWithdrawalAmount(
+  text: string,
+  available: number,
+  availableText: string,
+): ValidationResult<number> {
+  const result = validateAmount(text, {
+    emptyError: 'Please enter how much you took out.',
+    negativeError: 'Enter the amount without a minus sign.',
+    max: MAX_GOAL_TARGET,
+  });
+  if (result.ok && result.value > available) {
+    return { ok: false, error: `You can take out up to ${availableText}, what this goal holds.` };
+  }
+  return result;
+}
+
 /** Notes are optional. Returns undefined for an empty note. */
 export function validateNote(text: string): ValidationResult<string | undefined> {
   const note = text.trim().replace(/\s+/g, ' ');

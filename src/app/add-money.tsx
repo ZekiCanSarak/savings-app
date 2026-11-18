@@ -20,6 +20,7 @@ import {
   validateContributionAmount,
   validateContributionDate,
   validateNote,
+  validateWithdrawalAmount,
 } from '@/utils/validation';
 
 /** How far back a saving can be dated. */
@@ -31,11 +32,13 @@ function close() {
 }
 
 /**
- * Log money saved toward a goal. Opened with `?goalId=<id>` from the goal
- * detail screen, and presented as a modal (see src/app/_layout.tsx).
+ * Log money saved toward a goal, opened with `?goalId=<id>` from the goal
+ * detail screen. With `&mode=withdraw` it logs money taken out instead (never
+ * more than the goal holds). Presented as a modal (see src/app/_layout.tsx).
  */
 export default function AddMoneyScreen() {
-  const { goalId } = useLocalSearchParams<{ goalId: string }>();
+  const { goalId, mode } = useLocalSearchParams<{ goalId: string; mode?: string }>();
+  const withdrawing = mode === 'withdraw';
   const goal = useGoal(goalId ?? '');
   const progress = useGoalProgress(goalId ?? '');
   const currency = useCurrency();
@@ -61,11 +64,13 @@ export default function AddMoneyScreen() {
   const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? '';
   const typedAmount = parseMoneyInput(amountText);
   const willComplete =
-    progress.remaining > 0 && typedAmount !== null && typedAmount >= progress.remaining;
+    !withdrawing && progress.remaining > 0 && typedAmount !== null && typedAmount >= progress.remaining;
 
   function handleSave() {
-    if (!goal) return;
-    const amountResult = validateContributionAmount(amountText);
+    if (!goal || !progress) return;
+    const amountResult = withdrawing
+      ? validateWithdrawalAmount(amountText, progress.saved, formatMoney(progress.saved, currency))
+      : validateContributionAmount(amountText);
     const noteResult = validateNote(noteText);
     const dateResult = validateContributionDate(date);
     setAmountError(amountResult.ok ? null : amountResult.error);
@@ -77,6 +82,7 @@ export default function AddMoneyScreen() {
       goalId: goal.id,
       amount: amountResult.value,
       date: dateResult.value,
+      ...(withdrawing ? { withdrawal: true as const } : {}),
       ...(noteResult.value ? { note: noteResult.value } : {}),
     });
     close();
@@ -85,7 +91,7 @@ export default function AddMoneyScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ModalHeader title="Add money" onClose={close} />
+        <ModalHeader title={withdrawing ? 'Take money out' : 'Add money'} onClose={close} />
 
         <KeyboardAvoidingView
           style={styles.flex}
@@ -99,14 +105,16 @@ export default function AddMoneyScreen() {
                 {goal.name}
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
-                {progress.remaining > 0
-                  ? `${formatMoney(progress.remaining, currency)} left to save`
-                  : 'Goal already reached. Extra savings are welcome!'}
+                {withdrawing
+                  ? `${formatMoney(progress.saved, currency)} in this goal`
+                  : progress.remaining > 0
+                    ? `${formatMoney(progress.remaining, currency)} left to save`
+                    : 'Goal already reached. Extra savings are welcome!'}
               </ThemedText>
             </View>
 
             <TextField
-              label="Amount saved"
+              label={withdrawing ? 'Amount taken out' : 'Amount saved'}
               value={amountText}
               onChangeText={(text) => {
                 setAmountText(text);
@@ -149,7 +157,7 @@ export default function AddMoneyScreen() {
                 setNoteError(null);
               }}
               error={noteError}
-              placeholder="e.g. Birthday money"
+              placeholder={withdrawing ? 'e.g. Car repair' : 'e.g. Birthday money'}
               maxLength={NOTE_MAX_LENGTH + 20}
               returnKeyType="done"
               onSubmitEditing={handleSave}
