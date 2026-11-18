@@ -73,6 +73,17 @@ export type EmergencyFundStatus = 'covered' | 'some' | 'none';
 /** Needs / wants / savings shares, in percent. */
 export type BudgetStyle = '50-30-20' | '60-20-20' | '70-20-10';
 
+/** Which week of the month a pattern payday falls in; -1 = the last one. */
+export type WeekOfMonth = 1 | 2 | 3 | 4 | -1;
+
+/**
+ * When someone whose pay "varies" usually gets paid: set days of the month
+ * (e.g. the 1st and 15th), or a pattern like "the last Friday of every month".
+ */
+export type PaySchedule =
+  | { kind: 'dates'; days: number[] }
+  | { kind: 'pattern'; week: WeekOfMonth; weekday: number };
+
 /** 'guided' shows short explanations and every tip; 'brief' keeps screens short. */
 export type GuidanceLevel = 'guided' | 'brief';
 
@@ -87,6 +98,8 @@ export type AboutYou = {
   payday: number | null;
   /** Weekday the user is paid, 1 = Sunday … 7 = Saturday. Used when paid weekly or every 4 weeks. */
   payWeekday: number | null;
+  /** Usual paydays when pay "varies". null = no set days. */
+  paySchedule: PaySchedule | null;
   emergencyFund: EmergencyFundStatus | null;
   budgetStyle: BudgetStyle;
   guidance: GuidanceLevel | null;

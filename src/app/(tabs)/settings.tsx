@@ -35,6 +35,7 @@ import {
   GUIDANCE_INFO,
   PAY_INFO,
 } from '@/utils/personal';
+import { describePaySchedule } from '@/utils/payday';
 import { ordinal, weekdayName } from '@/utils/reminders';
 import { defaultReviewYear } from '@/utils/year-review';
 import {
@@ -70,6 +71,11 @@ function aboutSummary(about: AboutYou): { label: string; value: string }[] {
       (about.payFrequency === 'monthly' && about.payday !== null ? `, on the ${ordinal(about.payday)}` : '') +
       ((about.payFrequency === 'weekly' || about.payFrequency === 'four-weekly') && about.payWeekday !== null
         ? `, on ${weekdayName(about.payWeekday)}s`
+        : '') +
+      (about.payFrequency === 'irregular' &&
+      about.paySchedule &&
+      (about.paySchedule.kind === 'pattern' || about.paySchedule.days.length > 0)
+        ? `, usually on ${describePaySchedule(about.paySchedule)}`
         : '')
     : NOT_ANSWERED;
   const style = BUDGET_STYLE_INFO[about.budgetStyle];

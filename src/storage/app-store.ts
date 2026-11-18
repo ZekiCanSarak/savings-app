@@ -42,7 +42,7 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 3;
+const STORAGE_VERSION = 4;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -217,7 +217,8 @@ export const useAppStore = create<AppState>()(
       }),
       migrate: (persisted) => {
         // v1 → v2 added `about`; v2 → v3 added appearance, appLock, paydayCheckIn,
-        // yearReviewDismissed, payWeekday and withdrawals. Nothing to convert:
+        // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
+        // about.paySchedule. Nothing to convert:
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         return persisted as AppData;

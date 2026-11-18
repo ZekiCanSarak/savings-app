@@ -2,6 +2,7 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currencies';
 import { DEFAULT_GOAL_EMOJI } from '@/constants/goal-emojis';
 import type {
   AboutYou,
+  PaySchedule,
   AppData,
   Contribution,
   CurrencyCode,
@@ -92,6 +93,23 @@ function sanitizeReminders(value: unknown, fallback: ReminderSettings): Reminder
   };
 }
 
+function sanitizePaySchedule(value: unknown): PaySchedule | null {
+  if (!isObject(value)) return null;
+  if (value.kind === 'dates' && Array.isArray(value.days)) {
+    const days = [...new Set(value.days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 31))]
+      .sort((a, b) => a - b);
+    return days.length > 0 ? { kind: 'dates', days } : null;
+  }
+  if (value.kind === 'pattern' && [1, 2, 3, 4, -1].includes(value.week as number)) {
+    return {
+      kind: 'pattern',
+      week: value.week as 1 | 2 | 3 | 4 | -1,
+      weekday: clampWhole(value.weekday, 1, 7, 6),
+    };
+  }
+  return null;
+}
+
 const oneOf = <T extends string>(value: unknown, options: readonly T[]): T | null =>
   options.includes(value as T) ? (value as T) : null;
 
@@ -102,6 +120,7 @@ export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
     payFrequency: oneOf(value.payFrequency, ['monthly', 'four-weekly', 'weekly', 'irregular']),
     payday: Number.isFinite(value.payday) ? clampWhole(value.payday, 1, 31, 1) : null,
     payWeekday: Number.isFinite(value.payWeekday) ? clampWhole(value.payWeekday, 1, 7, 6) : null,
+    paySchedule: sanitizePaySchedule(value.paySchedule),
     emergencyFund: oneOf(value.emergencyFund, ['covered', 'some', 'none']),
     budgetStyle: oneOf(value.budgetStyle, ['50-30-20', '60-20-20', '70-20-10']) ?? fallback.budgetStyle,
     guidance: oneOf(value.guidance, ['guided', 'brief']),

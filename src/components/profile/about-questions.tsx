@@ -1,18 +1,21 @@
-import { StyleSheet, Switch, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { ChoiceChips } from '@/components/ui/choice-chips';
 import { OptionList } from '@/components/ui/option-list';
 import { ValueStepper } from '@/components/ui/value-stepper';
-import { Spacing } from '@/constants/theme';
+import { MinTapSize, Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import type {
   BudgetStyle,
   EmergencyFundStatus,
   GuidanceLevel,
   PayFrequency,
+  PaySchedule,
   SavingFocus,
+  WeekOfMonth,
 } from '@/types/models';
+import { describePaySchedule } from '@/utils/payday';
 import {
   BUDGET_STYLE_INFO,
   EMERGENCY_INFO,
@@ -85,18 +88,22 @@ type PayQuestionProps = {
   frequency: PayFrequency | null;
   payday: number | null;
   payWeekday: number | null;
+  paySchedule: PaySchedule | null;
   onChangeFrequency: (value: PayFrequency) => void;
   onChangePayday: (value: number) => void;
   onChangePayWeekday: (value: number) => void;
+  onChangePaySchedule: (value: PaySchedule | null) => void;
 };
 
 export function PayQuestion({
   frequency,
   payday,
   payWeekday,
+  paySchedule,
   onChangeFrequency,
   onChangePayday,
   onChangePayWeekday,
+  onChangePaySchedule,
 }: PayQuestionProps) {
   // Wraps round: ‹ from the 1st goes to the 31st and back.
   const step = (direction: 1 | -1) => {
@@ -134,6 +141,132 @@ export function PayQuestion({
           onChange={onChangePayWeekday}
         />
       )}
+      {frequency === 'irregular' && (
+        <VariablePaySchedule value={paySchedule} onChange={onChangePaySchedule} />
+      )}
+    </View>
+  );
+}
+
+type ScheduleKind = PaySchedule['kind'] | 'none';
+
+const WEEKS_OF_MONTH: { value: WeekOfMonth; label: string }[] = [
+  { value: 1, label: 'First' },
+  { value: 2, label: 'Second' },
+  { value: 3, label: 'Third' },
+  { value: 4, label: 'Fourth' },
+  { value: -1, label: 'Last' },
+];
+
+const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
+
+/**
+ * For pay that "varies": the usual paydays, as set dates each month (the 1st
+ * and 15th) or a pattern (the last Friday). Used for the payday check-in.
+ */
+function VariablePaySchedule({
+  value,
+  onChange,
+}: {
+  value: PaySchedule | null;
+  onChange: (value: PaySchedule | null) => void;
+}) {
+  const theme = useTheme();
+  const kind: ScheduleKind = value?.kind ?? 'none';
+
+  function chooseKind(next: ScheduleKind) {
+    if (next === kind) return;
+    if (next === 'dates') onChange({ kind: 'dates', days: [] });
+    else if (next === 'pattern') onChange({ kind: 'pattern', week: -1, weekday: 6 }); // last Friday
+    else onChange(null);
+  }
+
+  function toggleDay(day: number) {
+    if (value?.kind !== 'dates') return;
+    const days = value.days.includes(day)
+      ? value.days.filter((d) => d !== day)
+      : [...value.days, day].sort((a, b) => a - b);
+    onChange({ kind: 'dates', days });
+  }
+
+  const summary =
+    value && (value.kind === 'pattern' || value.days.length > 0)
+      ? `Paid on ${describePaySchedule(value)} of every month.`
+      : null;
+
+  return (
+    <View style={styles.group}>
+      <ChoiceChips<ScheduleKind>
+        label="When do you usually get paid?"
+        value={kind}
+        onChange={chooseKind}
+        options={[
+          { value: 'dates', label: 'On set dates' },
+          { value: 'pattern', label: 'On a pattern' },
+          { value: 'none', label: 'No set days' },
+        ]}
+      />
+
+      {value?.kind === 'dates' && (
+        <View style={styles.group}>
+          <ThemedText type="small" themeColor="textSecondary">
+            Tap every day you’re usually paid. In shorter months, the 29th–31st count as the last
+            day of the month.
+          </ThemedText>
+          <View accessibilityLabel="Paydays each month" style={styles.dayGrid}>
+            {DAYS_OF_MONTH.map((day) => {
+              const selected = value.days.includes(day);
+              return (
+                <Pressable
+                  key={day}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={`${ordinal(day)} of the month`}
+                  onPress={() => toggleDay(day)}
+                  style={({ pressed }) => [
+                    styles.day,
+                    {
+                      backgroundColor: selected ? theme.tint : theme.background,
+                      borderColor: selected ? theme.tint : theme.border,
+                    },
+                    pressed && styles.pressed,
+                  ]}>
+                  <ThemedText type="smallBold" style={{ color: selected ? theme.onTint : theme.text }}>
+                    {day}
+                  </ThemedText>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      )}
+
+      {value?.kind === 'pattern' && (
+        <>
+          <ChoiceChips<WeekOfMonth>
+            label="Which one?"
+            value={value.week}
+            onChange={(week) => onChange({ ...value, week })}
+            options={WEEKS_OF_MONTH}
+          />
+          <ChoiceChips<number>
+            label="Which day?"
+            value={value.weekday}
+            onChange={(weekday) => onChange({ ...value, weekday })}
+            options={WEEKDAYS}
+          />
+        </>
+      )}
+
+      {summary ? (
+        <ThemedText type="smallBold" themeColor="tint" accessibilityLiveRegion="polite">
+          {summary}
+        </ThemedText>
+      ) : kind === 'none' ? (
+        <ThemedText type="small" themeColor="textSecondary">
+          No problem. Payday reminders and check-ins need set days, so they’ll stay off.
+        </ThemedText>
+      ) : null}
     </View>
   );
 }
@@ -222,5 +355,21 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
+  },
+  dayGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  day: {
+    width: MinTapSize,
+    height: MinTapSize,
+    borderRadius: Radius.control,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

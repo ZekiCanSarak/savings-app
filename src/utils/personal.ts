@@ -19,6 +19,7 @@ export const DEFAULT_ABOUT: AboutYou = {
   payFrequency: null,
   payday: null,
   payWeekday: null,
+  paySchedule: null,
   emergencyFund: null,
   budgetStyle: '50-30-20',
   guidance: null,
@@ -118,6 +119,12 @@ export function perPayPeriod(
 export function reminderDefaultsFor(about: AboutYou): Partial<ReminderSettings> {
   if (about.payFrequency === 'monthly' && about.payday !== null) {
     return { frequency: 'monthly', dayOfMonth: about.payday >= 28 ? 1 : about.payday + 1 };
+  }
+  // Irregular pay on set dates: the day after the first one. (A pattern like
+  // "last Friday" moves around, so reminders can't follow it exactly.)
+  if (about.payFrequency === 'irregular' && about.paySchedule?.kind === 'dates') {
+    const first = about.paySchedule.days[0];
+    return { frequency: 'monthly', dayOfMonth: first >= 28 ? 1 : first + 1 };
   }
   if (about.payFrequency === 'weekly' || about.payFrequency === 'four-weekly') {
     // The day after payday (weekdays are 1 = Sunday … 7 = Saturday).

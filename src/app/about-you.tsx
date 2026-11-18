@@ -56,9 +56,11 @@ export default function AboutYouScreen() {
               frequency={about.payFrequency}
               payday={about.payday}
               payWeekday={about.payWeekday}
+              paySchedule={about.paySchedule}
               onChangeFrequency={(payFrequency) => answer({ payFrequency })}
               onChangePayday={(payday) => answer({ payday })}
               onChangePayWeekday={(payWeekday) => answer({ payWeekday })}
+              onChangePaySchedule={(paySchedule) => answer({ paySchedule })}
             />
           </Card>
 

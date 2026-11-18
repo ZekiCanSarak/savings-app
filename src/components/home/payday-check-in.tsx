@@ -20,7 +20,7 @@ import { budgetSplit } from '@/utils/budget';
 import { relativeDayInSentence, todayIsoDate } from '@/utils/dates';
 import { amountRemaining } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
-import { paydayToCheckIn } from '@/utils/payday';
+import { paydaysPerMonth, paydayToCheckIn } from '@/utils/payday';
 import { perPayPeriod } from '@/utils/personal';
 import { goalsNeedingAttention } from '@/utils/reminders';
 
@@ -64,7 +64,12 @@ export function PaydayCheckIn({ index }: PaydayCheckInProps) {
   // The suggested saving for one payday, never more than the goal still needs.
   const income = profile.monthlyIncome ?? 0;
   const monthly = income > 0 ? budgetSplit(income, about.budgetStyle).savings : 0;
-  const perPay = perPayPeriod(monthly, about.payFrequency)?.amount ?? monthly;
+  const perPay =
+    perPayPeriod(monthly, about.payFrequency)?.amount ??
+    // Pay that varies, on several set dates: share the month's suggestion between them.
+    (about.payFrequency === 'irregular'
+      ? Math.round(monthly / paydaysPerMonth(about.paySchedule))
+      : monthly);
   const suggested = Math.min(perPay, amountRemaining(goal, contributions));
 
   function quickSave() {
