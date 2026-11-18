@@ -1,6 +1,7 @@
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currencies';
 import { DEFAULT_GOAL_EMOJI } from '@/constants/goal-emojis';
 import type {
+  AboutYou,
   AppData,
   Contribution,
   CurrencyCode,
@@ -90,6 +91,27 @@ function sanitizeReminders(value: unknown, fallback: ReminderSettings): Reminder
   };
 }
 
+const oneOf = <T extends string>(value: unknown, options: readonly T[]): T | null =>
+  options.includes(value as T) ? (value as T) : null;
+
+export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
+  if (!isObject(value)) return fallback;
+  return {
+    focus: oneOf(value.focus, ['emergency', 'purchase', 'travel', 'home', 'debt', 'habit']),
+    payFrequency: oneOf(value.payFrequency, ['monthly', 'four-weekly', 'weekly', 'irregular']),
+    payday: Number.isFinite(value.payday) ? clampWhole(value.payday, 1, 31, 1) : null,
+    emergencyFund: oneOf(value.emergencyFund, ['covered', 'some', 'none']),
+    budgetStyle: oneOf(value.budgetStyle, ['50-30-20', '60-20-20', '70-20-10']) ?? fallback.budgetStyle,
+    guidance: oneOf(value.guidance, ['guided', 'brief']),
+    celebrations: value.celebrations !== false,
+    askedAt:
+      typeof value.askedAt === 'string' && !Number.isNaN(Date.parse(value.askedAt))
+        ? value.askedAt
+        : null,
+    emergencyPromptDismissed: value.emergencyPromptDismissed === true,
+  };
+}
+
 export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
   if (!isObject(saved)) return defaults;
   const goals = sanitizeGoals(saved.goals);
@@ -97,6 +119,7 @@ export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
     onboardingComplete: saved.onboardingComplete === true,
     profile: sanitizeProfile(saved.profile, defaults.profile),
     reminders: sanitizeReminders(saved.reminders, defaults.reminders),
+    about: sanitizeAbout(saved.about, defaults.about),
     reminderPromptDismissed: saved.reminderPromptDismissed === true,
     goals,
     contributions: sanitizeContributions(saved.contributions, new Set(goals.map((g) => g.id))),

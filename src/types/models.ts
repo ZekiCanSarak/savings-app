@@ -60,12 +60,47 @@ export type ReminderSettings = {
   minute: number;
 };
 
+/** What the user is mainly saving for (welcome flow / "About you"). */
+export type SavingFocus = 'emergency' | 'purchase' | 'travel' | 'home' | 'debt' | 'habit';
+
+/** How often the user is paid. 'irregular' = freelance, shifts, student loan and so on. */
+export type PayFrequency = 'monthly' | 'four-weekly' | 'weekly' | 'irregular';
+
+export type EmergencyFundStatus = 'covered' | 'some' | 'none';
+
+/** Needs / wants / savings shares, in percent. */
+export type BudgetStyle = '50-30-20' | '60-20-20' | '70-20-10';
+
+/** 'guided' shows short explanations and every tip; 'brief' keeps screens short. */
+export type GuidanceLevel = 'guided' | 'brief';
+
+/**
+ * Answers that personalise the app. Every question can be skipped, so `null`
+ * means "not answered" and the app falls back to its general behaviour.
+ */
+export type AboutYou = {
+  focus: SavingFocus | null;
+  payFrequency: PayFrequency | null;
+  /** Day of the month the user is paid (1–31). Only used when paid monthly. */
+  payday: number | null;
+  emergencyFund: EmergencyFundStatus | null;
+  budgetStyle: BudgetStyle;
+  guidance: GuidanceLevel | null;
+  /** Confetti when a goal is reached. */
+  celebrations: boolean;
+  /** When the user last went through the questions; null = never asked (shows a Home prompt). */
+  askedAt: IsoTimestamp | null;
+  /** The user tapped "No thanks" on Home's emergency fund suggestion. */
+  emergencyPromptDismissed: boolean;
+};
+
 /** Everything that gets saved to the device. */
 export type AppData = {
   /** False until the user finishes the welcome flow. */
   onboardingComplete: boolean;
   profile: UserProfile;
   reminders: ReminderSettings;
+  about: AboutYou;
   /** The user tapped "No thanks" on the Home reminders suggestion. */
   reminderPromptDismissed: boolean;
   goals: SavingsGoal[];

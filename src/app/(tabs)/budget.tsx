@@ -11,17 +11,38 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { Screen } from '@/components/ui/screen';
 import { TextButton } from '@/components/ui/text-button';
 import { Spacing } from '@/constants/theme';
-import { useContributions, useGoals, useProfile } from '@/hooks/use-app-data';
-import type { Contribution, CurrencyCode, SavingsGoal } from '@/types/models';
+import { useAbout, useContributions, useGoals, useProfile } from '@/hooks/use-app-data';
+import type { AboutYou, Contribution, CurrencyCode, SavingsGoal } from '@/types/models';
 import { budgetSplit, incomeLevel, savedThisMonth, tipsFor } from '@/utils/budget';
 import { parseIsoDate, savingMonthsLeft, todayIsoDate } from '@/utils/dates';
 import { isGoalComplete, monthlyAmountNeeded } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
+import { BUDGET_STYLE_INFO, perPayPeriod, wantsGuidance } from '@/utils/personal';
+
+/** Short explanations for people who asked for help ("I'm new to this"). */
+const GOOD_TO_KNOW = [
+  {
+    icon: '🧾',
+    title: 'Needs or wants?',
+    body: 'Needs are what you must pay, like rent, bills, food and getting to work. Wants are nice to have, like eating out, hobbies and subscriptions.',
+  },
+  {
+    icon: '🛟',
+    title: 'What’s an emergency fund?',
+    body: 'Money kept aside only for surprises, like a broken boiler or losing work. Three months of essentials is a common aim.',
+  },
+  {
+    icon: '🏦',
+    title: 'Why save first?',
+    body: 'Moving money to savings on payday, before spending, means it actually gets saved instead of being whatever’s left.',
+  },
+];
 
 export default function BudgetScreen() {
   const profile = useProfile();
   const goals = useGoals();
   const contributions = useContributions();
+  const about = useAbout();
   const { currency, monthlyIncome } = profile;
 
   return (
@@ -57,6 +78,7 @@ export default function BudgetScreen() {
           currency={currency}
           goals={goals}
           contributions={contributions}
+          about={about}
         />
       )}
 
@@ -70,18 +92,25 @@ function BudgetContent({
   currency,
   goals,
   contributions,
+  about,
 }: {
   monthlyIncome: number;
   currency: CurrencyCode;
   goals: SavingsGoal[];
   contributions: Contribution[];
+  about: AboutYou;
 }) {
   const money = (amount: number) => formatMoney(amount, currency);
   const today = todayIsoDate();
   const monthName = parseIsoDate(today).toLocaleDateString('en-GB', { month: 'long' });
 
-  const split = budgetSplit(monthlyIncome);
+  const style = BUDGET_STYLE_INFO[about.budgetStyle];
+  const savingsShare = style.shares.savings;
+  const guided = wantsGuidance(about);
+  const irregular = about.payFrequency === 'irregular';
+  const split = budgetSplit(monthlyIncome, about.budgetStyle);
   const suggested = split.savings;
+  const perPay = perPayPeriod(suggested, about.payFrequency);
   const saved = savedThisMonth(contributions, today);
   const percentOfSuggested = suggested > 0 ? Math.min(100, Math.floor((saved / suggested) * 100)) : 0;
   const toGo = Math.max(0, suggested - saved);
@@ -92,7 +121,9 @@ function BudgetContent({
     .filter((g) => !isGoalComplete(g, contributions))
     .reduce((sum, g) => sum + (monthlyAmountNeeded(g, contributions, today) ?? 0), 0);
 
-  const tips = tipsFor(incomeLevel(monthlyIncome, currency));
+  // Tips about the user's answers come first; "keep it short" shows just the top three.
+  const allTips = tipsFor(incomeLevel(monthlyIncome, currency), about);
+  const tips = guided ? allTips : allTips.slice(0, 3);
   const noIncome = monthlyIncome === 0;
 
   return (
@@ -108,9 +139,12 @@ function BudgetContent({
       ) : (
         <Card
           title="Suggested split"
-          subtitle="The 50/30/20 rule: half on needs, 30% on wants and 20% on savings. A simple place to start."
+          subtitle={
+            `${style.label}: ${style.shares.needs}% on needs, ${style.shares.wants}% on wants and ${savingsShare}% on savings.` +
+            (guided ? ' Change it in Settings → About you.' : '')
+          }
           index={0}>
-          <BudgetSplitChart split={split} currency={currency} />
+          <BudgetSplitChart split={split} currency={currency} style={about.budgetStyle} />
         </Card>
       )}
 
@@ -124,7 +158,15 @@ function BudgetContent({
           </View>
         </Card>
       ) : (
-      <Card title={`Savings in ${monthName}`} subtitle={`Suggested: ${money(suggested)} a month (20%)`} index={1}>
+      <Card
+        title={`Savings in ${monthName}`}
+        subtitle={
+          irregular
+            ? `Suggested: ${savingsShare}% of whatever comes in (about ${money(suggested)} in an average month)`
+            : `Suggested: ${money(suggested)} a month (${savingsShare}%)` +
+              (perPay ? `, about ${money(perPay.amount)} ${perPay.per}` : '')
+        }
+        index={1}>
         <View
           style={styles.row}
           accessible
@@ -154,15 +196,33 @@ function BudgetContent({
             Your goals with target dates need about{' '}
             <ThemedText type="smallBold">{money(goalsNeed)}</ThemedText> a month.
             {goalsNeed > suggested
-              ? ' That’s more than 20% of your income, so you might push a date back or trim your wants.'
+              ? ` That’s more than ${savingsShare}% of your income, so you might push a date back or trim your wants.`
               : ' That fits within your suggested savings.'}
           </ThemedText>
         )}
       </Card>
       )}
 
+      {guided && (
+        <Card title="Good to know" index={2}>
+          {GOOD_TO_KNOW.map((item) => (
+            <View key={item.title} style={styles.explainer} accessible accessibilityLabel={`${item.title} ${item.body}`}>
+              <ThemedText type="emoji" style={styles.explainerIcon} importantForAccessibility="no">
+                {item.icon}
+              </ThemedText>
+              <View style={styles.flex}>
+                <ThemedText type="smallBold">{item.title}</ThemedText>
+                <ThemedText type="small" themeColor="textSecondary">
+                  {item.body}
+                </ThemedText>
+              </View>
+            </View>
+          ))}
+        </Card>
+      )}
+
       {/* On web the long tips list starts folded away, so the budget itself stays in view. */}
-      <TipsSection tips={tips} index={2} collapsible={Platform.OS === 'web'} />
+      <TipsSection tips={tips} index={3} collapsible={Platform.OS === 'web'} />
     </>
   );
 }
@@ -175,6 +235,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
+  },
+  explainer: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+    alignItems: 'flex-start',
+  },
+  explainerIcon: {
+    width: 32,
   },
   row: {
     flexDirection: 'row',

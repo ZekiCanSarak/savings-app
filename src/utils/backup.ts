@@ -1,7 +1,13 @@
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
-import { sanitizeContributions, sanitizeGoals, sanitizeProfile } from '@/storage/sanitize';
+import {
+  sanitizeAbout,
+  sanitizeContributions,
+  sanitizeGoals,
+  sanitizeProfile,
+} from '@/storage/sanitize';
 import type { AppData, IsoTimestamp } from '@/types/models';
 import { nowIsoTimestamp, todayIsoDate } from '@/utils/dates';
+import { DEFAULT_ABOUT } from '@/utils/personal';
 import type { ValidationResult } from '@/utils/validation';
 
 /**
@@ -12,8 +18,13 @@ import type { ValidationResult } from '@/utils/validation';
  * notification permission, so an import keeps the current device's settings.
  */
 
-/** What a backup holds and what an import replaces. */
-export type BackupData = Pick<AppData, 'profile' | 'goals' | 'contributions'>;
+/**
+ * What a backup holds and what an import replaces. `about` ("About you"
+ * answers) is missing from backups made before it existed.
+ */
+export type BackupData = Pick<AppData, 'profile' | 'goals' | 'contributions'> & {
+  about?: AppData['about'];
+};
 
 type BackupFile = {
   app: typeof BACKUP_APP;
@@ -37,7 +48,12 @@ export function createBackup(data: BackupData, exportedAt = nowIsoTimestamp()): 
     app: BACKUP_APP,
     version: BACKUP_VERSION,
     exportedAt,
-    data: { profile: data.profile, goals: data.goals, contributions: data.contributions },
+    data: {
+      profile: data.profile,
+      goals: data.goals,
+      contributions: data.contributions,
+      about: data.about,
+    },
   };
   return JSON.stringify(file, null, 2);
 }
@@ -79,6 +95,7 @@ export function parseBackup(text: string): ValidationResult<BackupData> {
       }),
       goals,
       contributions: sanitizeContributions(data.contributions, new Set(goals.map((g) => g.id))),
+      ...(isObject(data.about) ? { about: sanitizeAbout(data.about, DEFAULT_ABOUT) } : {}),
     },
   };
 }

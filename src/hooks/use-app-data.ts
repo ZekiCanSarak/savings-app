@@ -37,6 +37,10 @@ export function useReminderSettings() {
   return useAppStore((s) => s.reminders);
 }
 
+export function useAbout() {
+  return useAppStore((s) => s.about);
+}
+
 export function useReminderPromptDismissed() {
   return useAppStore((s) => s.reminderPromptDismissed);
 }
@@ -86,6 +90,7 @@ export function useAppActions() {
       updateContribution: s.updateContribution,
       deleteContribution: s.deleteContribution,
       updateReminders: s.updateReminders,
+      updateAbout: s.updateAbout,
       dismissReminderPrompt: s.dismissReminderPrompt,
       importBackup: s.importBackup,
       resetAllData: s.resetAllData,

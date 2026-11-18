@@ -1,5 +1,6 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Platform, StyleSheet } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
 import { CurrencyPicker } from '@/components/profile/currency-picker';
@@ -10,11 +11,26 @@ import { Card } from '@/components/ui/card';
 import { Screen } from '@/components/ui/screen';
 import { TextField } from '@/components/ui/text-field';
 import { currencyInfo } from '@/constants/currencies';
-import { useAppActions, useContributions, useGoals, useProfile } from '@/hooks/use-app-data';
+import { Spacing } from '@/constants/theme';
+import {
+  useAbout,
+  useAppActions,
+  useContributions,
+  useGoals,
+  useProfile,
+} from '@/hooks/use-app-data';
 import { pickBackupFile, saveBackupFile } from '@/services/backup-file';
 import { cancelAllReminders, notificationsSupported } from '@/services/notifications';
-import type { CurrencyCode } from '@/types/models';
+import type { AboutYou, CurrencyCode } from '@/types/models';
 import { backupFileName, createBackup, parseBackup, type BackupData } from '@/utils/backup';
+import {
+  BUDGET_STYLE_INFO,
+  EMERGENCY_INFO,
+  FOCUS_INFO,
+  GUIDANCE_INFO,
+  PAY_INFO,
+} from '@/utils/personal';
+import { ordinal } from '@/utils/reminders';
 import {
   amountToInputText,
   MONEY_INPUT_MAX_LENGTH,
@@ -39,10 +55,33 @@ function confirmAction(title: string, message: string, confirmTitle: string, onC
 
 type DataMessage = { tone: 'success' | 'error'; text: string };
 
+const NOT_ANSWERED = 'Not answered';
+
+/** One line per "About you" answer, for the summary in Settings. */
+function aboutSummary(about: AboutYou): { label: string; value: string }[] {
+  const pay = about.payFrequency
+    ? PAY_INFO[about.payFrequency].label +
+      (about.payFrequency === 'monthly' && about.payday !== null ? `, on the ${ordinal(about.payday)}` : '')
+    : NOT_ANSWERED;
+  const style = BUDGET_STYLE_INFO[about.budgetStyle];
+  return [
+    { label: 'Saving for', value: about.focus ? FOCUS_INFO[about.focus].label : NOT_ANSWERED },
+    { label: 'Paid', value: pay },
+    {
+      label: 'Emergency fund',
+      value: about.emergencyFund ? EMERGENCY_INFO[about.emergencyFund].label : NOT_ANSWERED,
+    },
+    { label: 'Budget', value: `${style.label} (${style.name.toLowerCase()})` },
+    { label: 'Help', value: about.guidance ? GUIDANCE_INFO[about.guidance].label : NOT_ANSWERED },
+    { label: 'Confetti', value: about.celebrations ? 'On' : 'Off' },
+  ];
+}
+
 export default function SettingsScreen() {
   const profile = useProfile();
   const goals = useGoals();
   const contributions = useContributions();
+  const about = useAbout();
   const { updateProfile, resetAllData, importBackup } = useAppActions();
 
   // Edits are kept here until the user taps Save.
@@ -90,7 +129,7 @@ export default function SettingsScreen() {
     setDataMessage(null);
     try {
       // Saves what's stored, not unsaved edits in the form above.
-      await saveBackupFile(backupFileName(), createBackup({ profile, goals, contributions }));
+      await saveBackupFile(backupFileName(), createBackup({ profile, goals, contributions, about }));
     } catch (error) {
       console.warn('Export failed', error);
       setDataMessage({ tone: 'error', text: 'Couldn’t export your data. Please try again.' });
@@ -198,6 +237,36 @@ export default function SettingsScreen() {
         </ThemedText>
       )}
 
+      <Card
+        title="About you"
+        subtitle="Your answers tailor your budget, tips, reminders and suggestions."
+        index={2}>
+        <View style={styles.summary}>
+          {aboutSummary(about).map((row) => (
+            <View
+              key={row.label}
+              style={styles.summaryRow}
+              accessible
+              accessibilityLabel={`${row.label}: ${row.value}`}>
+              <ThemedText type="small" themeColor="textSecondary" style={styles.summaryLabel}>
+                {row.label}
+              </ThemedText>
+              <ThemedText
+                type="smallBold"
+                themeColor={row.value === NOT_ANSWERED ? 'textSecondary' : 'text'}
+                style={styles.summaryValue}>
+                {row.value}
+              </ThemedText>
+            </View>
+          ))}
+        </View>
+        <Button
+          title="Change your answers"
+          variant="secondary"
+          onPress={() => router.push('/about-you')}
+        />
+      </Card>
+
       {/* The web app can't send notifications; its reminders show on Home instead. */}
       {notificationsSupported && (
         <Card title="Reminders" subtitle="Changes here save straight away." index={2}>
@@ -244,5 +313,18 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   center: {
     textAlign: 'center',
+  },
+  summary: {
+    gap: Spacing.two,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  summaryLabel: {
+    width: 120,
+  },
+  summaryValue: {
+    flex: 1,
   },
 });

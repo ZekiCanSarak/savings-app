@@ -68,6 +68,8 @@ export default function RootLayout() {
           <Stack.Screen name="add-money" options={{ presentation: 'modal' }} />
           {/* Explains reminders before asking for notification permission. */}
           <Stack.Screen name="reminder-setup" options={{ presentation: 'modal' }} />
+          {/* "About you" questions that personalise the app. */}
+          <Stack.Screen name="about-you" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!isOnboarded}>
           <Stack.Screen name="onboarding" />

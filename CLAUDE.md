@@ -20,7 +20,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Project setup, bottom tab bar with 4 tabs (Home, Goals, Budget, Settings)
 - [x] Design polish: shared Screen/Card/Button components, type scale, radii, dark-mode navigation colours, animated progress bars and card fade-ins, accessibility labels
 - [x] Data model + local storage (Zustand + AsyncStorage) + goal helper functions
-- [x] Onboarding (first launch only): name → currency → monthly income after tax
+- [x] Onboarding (first launch only): name → currency → pay → monthly income after tax → "About you" questions (each skippable)
 - [x] Settings: edit name, currency, monthly income; delete all data
 - [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
 - [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
@@ -29,6 +29,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Reminders: local notifications (weekly/monthly at a chosen time), explained before asking permission, about the goal furthest behind schedule; rescheduled on every data change; same messages on Home
 - [x] Web version as a PWA ("Goalpot"): static web build, manifest + icons, full screen from the iPhone home screen, deployed with EAS Hosting. Notifications are phone-only; on web the Reminders section is hidden and reminders show on Home
 - [x] Export / import data (Settings, all platforms): JSON backup file; import asks before replacing
+- [x] Personalisation ("About you"): saving focus, pay frequency + payday, emergency fund, budget style, guidance level, confetti. Asked in onboarding, editable in Settings, Home invites existing users to answer
 
 Update this list as features land.
 
@@ -53,6 +54,20 @@ Update this list as features land.
 - On web, Budget's "Tips for you" card starts closed and opens on tap (`TipsSection collapsible`); the phone app shows the full list.
 - The web tab bar (`app-tabs.web.tsx`) sits below the screens, not over them, and pads for the home indicator, so `BottomTabInset` is 0 on web.
 - Commands: `npm run preview:web` (build + serve at http://localhost:8081), `npm run deploy:web` (build + `eas deploy --prod` to EAS Hosting; needs `npx eas-cli login` once).
+
+## Personalisation ("About you")
+
+- `AppData.about` (`AboutYou` in `types/models.ts`) holds the answers. Every question is optional: `null` means skipped, and the app falls back to its general behaviour. `askedAt: null` (users from before this existed) shows Home's "Make Goalpot yours" card.
+- **Rule: only ask a question whose answer visibly changes something.** What each answer does (helpers in `utils/personal.ts`):
+  - `focus` (what they're saving for): Home's empty state offers a pre-filled first goal (`goal-editor?name=&emoji=&target=`), tips tagged with that topic come first, and Home's subtitle says "You're £340 closer to your new home".
+  - `payFrequency` / `payday`: reminder defaults follow pay while reminders are off (`reminderDefaultsFor`: the day after payday, or the 1st for paydays from the 28th), weekly / 4-weekly earners also see amounts per payday (`perPayPeriod`), and `irregular` changes the income question to an average and the Budget wording to a percentage, and puts irregular-income tips first.
+  - `emergencyFund` 'none' / 'some': Home suggests an emergency fund goal sized at 3 months of needs (`emergencyFundTarget`), until dismissed or a goal looks like one (`hasEmergencyGoal`).
+  - `budgetStyle`: `budgetSplit(income, style)` and `BudgetSplitChart style` (50/30/20, 60/20/20, 70/20/10, in `BUDGET_STYLE_INFO`). The suggested monthly saving is the savings share.
+  - `guidance`: 'brief' shows only the top 3 tips and no "Good to know" card; 'guided' or skipped shows both (`wantsGuidance`).
+  - `celebrations`: confetti on goal completion (the banner always shows).
+- Questions live in `components/profile/about-questions.tsx` (`QUESTIONS` wording plus one component per question, built on `components/ui/option-list.tsx`). Onboarding shows one per step with "Skip this question", and `app/about-you.tsx` (modal, from Settings and Home) shows all of them and saves as they're tapped.
+- Tips can have `topics` (`TipTopic`); `tipsFor(level, answers)` puts matching tips first. The answer-matched tips sit at the top of `data/tips.ts`.
+- `about` is in backups (`BackupData.about`, optional so older backups still import; then this device's answers are kept) and is reset by "Reset all data".
 
 ## Export / import
 
@@ -91,10 +106,11 @@ src/
   app/                  Screens. Each file is a route (Expo Router).
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
     +html.tsx           Web only: HTML shell with the PWA tags
-    onboarding.tsx      First-launch welcome flow (3 steps)
+    onboarding.tsx      First-launch welcome flow (8 steps, question steps can be skipped)
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
     reminder-setup.tsx  Modal: explains reminders, then asks for notification permission
+    about-you.tsx       Modal: all "About you" questions, saved as they're tapped
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -107,8 +123,9 @@ src/
   components/           Reusable UI pieces
     ui/                 Design system: screen.tsx, card.tsx, button.tsx, text-button.tsx,
                         modal-header.tsx, empty-state.tsx, text-field.tsx, progress-bar.tsx,
-                        day-stepper.tsx, value-stepper.tsx, choice-chips.tsx, confetti.tsx
-    profile/            currency-picker.tsx, after-tax-explainer.tsx
+                        day-stepper.tsx, value-stepper.tsx, choice-chips.tsx, option-list.tsx,
+                        confetti.tsx
+    profile/            currency-picker.tsx, after-tax-explainer.tsx, about-questions.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
@@ -150,6 +167,7 @@ src/
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
     backup.ts           createBackup / parseBackup for export and import
+    personal.ts         "About you" options and what each answer changes
     id.ts               createId
 assets/                 Images, icons, splash
 public/                 Copied to the web site root: manifest.json, PWA icons
@@ -181,7 +199,7 @@ Charts (follow these for every new chart):
 - **Several series:** when a chart needs several colours (like the 50/30/20 split), use fixed theme tokens (`budgetNeeds` / `budgetWants` / `budgetSavings`) whose order was checked together with the validator. Don't reorder or reuse them for other meanings. A label printed inside a coloured block uses `labelColourOn(hex)` (white or near-black). Every coloured part also gets a text label, so colour is never the only cue.
 
 Budget & tips:
-- The 50/30/20 amounts come from `budgetSplit()`, which always adds up exactly to the income (any rounding goes to needs). "Saved this month" means contributions dated in the current calendar month, across all goals.
+- The split amounts come from `budgetSplit(income, style)` (50/30/20 unless the user chose another style), which always adds up exactly to the income (any rounding goes to needs). "Saved this month" means contributions dated in the current calendar month, across all goals.
 - **Tips live in `src/data/tips.ts`.** To add one, copy a block, give it a new unique `id` and set `for: [...]` income levels. Never reuse or rename ids, because they decide which tip shows on which day. Tips stay general: no specific products, providers, tax rules or amounts in a particular currency.
 - Income levels (`lower` / `middle` / `higher`) use rough monthly take-home thresholds per currency in `INCOME_BANDS`. A new currency must be added there too.
 - The tip of the day is picked from the date, so it stays the same all day and cycles through every matching tip before repeating.

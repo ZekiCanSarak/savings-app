@@ -15,6 +15,7 @@ import { ProgressBar } from '@/components/ui/progress-bar';
 import { BottomTabInset, MaxContentWidth, Radius, ScreenPadding, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 import {
+  useAbout,
   useAppActions,
   useContributions,
   useCurrency,
@@ -31,6 +32,7 @@ import {
   toIsoDate,
 } from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
+import { perPayPeriod } from '@/utils/personal';
 
 /** Leaves this screen; falls back to the list if there's nothing to go back to (e.g. web refresh). */
 function goBackToList() {
@@ -59,6 +61,7 @@ export default function GoalDetailScreen() {
   const currency = useCurrency();
   const { deleteGoal, deleteContribution } = useAppActions();
   const reduceMotion = useReducedMotion();
+  const about = useAbout();
   const theme = useTheme();
 
   // Celebrate when progress crosses into 100% while this screen is open
@@ -85,6 +88,9 @@ export default function GoalDetailScreen() {
 
   const money = (amount: number) => formatMoney(amount, currency);
   const complete = progress.remaining === 0;
+  // People paid weekly or every 4 weeks also see the monthly plan per payday.
+  const perPay =
+    progress.monthlyNeeded !== null ? perPayPeriod(progress.monthlyNeeded, about.payFrequency) : null;
 
   function confirmDeleteGoal() {
     if (!goal) return;
@@ -184,6 +190,7 @@ export default function GoalDetailScreen() {
                 You need to save{' '}
                 <ThemedText type="defaultBold">{money(progress.monthlyNeeded)}</ThemedText>{' '}
                 per month to reach this by {formatMonthYear(goal.targetDate)}.
+                {perPay ? ` That’s about ${money(perPay.amount)} ${perPay.per}.` : ''}
               </ThemedText>
             ) : (
               <ThemedText themeColor="textSecondary">
@@ -237,7 +244,7 @@ export default function GoalDetailScreen() {
       </ScrollView>
 
       {/* Usually triggered from the Add money sheet, so wait for it to close. */}
-      {celebrating && !reduceMotion && <Confetti startDelay={450} />}
+      {celebrating && !reduceMotion && about.celebrations && <Confetti startDelay={450} />}
     </ThemedView>
   );
 }

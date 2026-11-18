@@ -1,6 +1,7 @@
-import { INCOME_BANDS, TIPS, type IncomeLevel, type Tip } from '@/data/tips';
-import type { Contribution, CurrencyCode, IsoDate } from '@/types/models';
+import { INCOME_BANDS, TIPS, type IncomeLevel, type Tip, type TipTopic } from '@/data/tips';
+import type { AboutYou, BudgetStyle, Contribution, CurrencyCode, IsoDate } from '@/types/models';
 import { parseIsoDate, todayIsoDate } from '@/utils/dates';
+import { BUDGET_STYLE_INFO } from '@/utils/personal';
 
 /**
  * Budget calculations. Pure functions (no React); amounts in minor units.
@@ -8,20 +9,25 @@ import { parseIsoDate, todayIsoDate } from '@/utils/dates';
 
 export type BudgetSplit = { needs: number; wants: number; savings: number };
 
-/** The 50/30/20 shares, in display order. */
-export const SPLIT_RULE = [
-  { key: 'needs', share: 50 },
-  { key: 'wants', share: 30 },
-  { key: 'savings', share: 20 },
-] as const;
+/** A budget style's shares in display order (needs, wants, savings). */
+export function splitRule(style: BudgetStyle = '50-30-20') {
+  const { shares } = BUDGET_STYLE_INFO[style];
+  return [
+    { key: 'needs', share: shares.needs },
+    { key: 'wants', share: shares.wants },
+    { key: 'savings', share: shares.savings },
+  ] as const;
+}
 
 /**
- * 50/30/20 split of monthly income. Rounded to whole pence; any rounding
- * remainder goes to needs, so the three always add up to the income exactly.
+ * Split of monthly income for a budget style (50/30/20 by default). Rounded
+ * to whole pence; any rounding remainder goes to needs, so the three always
+ * add up to the income exactly.
  */
-export function budgetSplit(monthlyIncome: number): BudgetSplit {
-  const savings = Math.round(monthlyIncome * 0.2);
-  const wants = Math.round(monthlyIncome * 0.3);
+export function budgetSplit(monthlyIncome: number, style: BudgetStyle = '50-30-20'): BudgetSplit {
+  const { shares } = BUDGET_STYLE_INFO[style];
+  const savings = Math.round((monthlyIncome * shares.savings) / 100);
+  const wants = Math.round((monthlyIncome * shares.wants) / 100);
   return { needs: monthlyIncome - wants - savings, wants, savings };
 }
 
@@ -40,15 +46,31 @@ export function incomeLevel(monthlyIncome: number, currency: CurrencyCode): Inco
   return 'higher';
 }
 
+type TipAnswers = Partial<Pick<AboutYou, 'focus' | 'payFrequency' | 'emergencyFund'>>;
+
+/** Topics a user's "About you" answers make most relevant. */
+export function topicsFor(answers: TipAnswers): TipTopic[] {
+  const topics: TipTopic[] = [];
+  if (answers.focus) topics.push(answers.focus);
+  if (answers.payFrequency === 'irregular') topics.push('irregular-income');
+  if (answers.emergencyFund === 'none' || answers.emergencyFund === 'some') topics.push('emergency');
+  return topics;
+}
+
 /**
- * Tips for an income level. Tips written just for that level come first,
- * then the general ones, each group in the order of the data file.
+ * Tips for an income level. Tips about the user's own answers (what they're
+ * saving for, irregular pay, no emergency fund) come first, then tips written
+ * just for that income level, then the general ones, each group in the order
+ * of the data file.
  */
-export function tipsFor(level: IncomeLevel, tips: Tip[] = TIPS): Tip[] {
+export function tipsFor(level: IncomeLevel, answers: TipAnswers = {}, tips: Tip[] = TIPS): Tip[] {
+  const topics = topicsFor(answers);
   const matching = tips.filter((t) => t.for.includes(level));
-  const specific = matching.filter((t) => t.for.length < 3);
-  const general = matching.filter((t) => t.for.length >= 3);
-  return [...specific, ...general];
+  const personal = matching.filter((t) => t.topics?.some((topic) => topics.includes(topic)));
+  const rest = matching.filter((t) => !personal.includes(t));
+  const specific = rest.filter((t) => t.for.length < 3);
+  const general = rest.filter((t) => t.for.length >= 3);
+  return [...personal, ...specific, ...general];
 }
 
 /**
@@ -56,7 +78,7 @@ export function tipsFor(level: IncomeLevel, tips: Tip[] = TIPS): Tip[] {
  * through every matching tip before repeating.
  */
 export function tipOfTheDay(level: IncomeLevel, today: IsoDate = todayIsoDate(), tips: Tip[] = TIPS): Tip | null {
-  const options = tipsFor(level, tips);
+  const options = tipsFor(level, {}, tips);
   if (options.length === 0) return null;
   const dayNumber = Math.floor(parseIsoDate(today).getTime() / 86_400_000 + 0.5);
   return options[((dayNumber % options.length) + options.length) % options.length];

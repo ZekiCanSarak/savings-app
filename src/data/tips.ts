@@ -1,11 +1,12 @@
-import type { CurrencyCode } from '@/types/models';
+import type { CurrencyCode, SavingFocus } from '@/types/models';
 
 /**
  * Saving tips shown on the Budget tab (all that match) and on Home (one per day).
  *
  * ── How to add a tip ────────────────────────────────────────────────
  * Copy any block in TIPS below, give it a new unique `id`, and choose which
- * income levels it's for in `for`. That's it. Keep tips:
+ * income levels it's for in `for`. Optionally add `topics` so it's shown
+ * first to people whose "About you" answers match. Keep tips:
  *   • practical — something the reader can do this week
  *   • short — a title plus one or two sentences
  *   • general — no specific products, providers or tax rules, as these vary
@@ -16,6 +17,9 @@ import type { CurrencyCode } from '@/types/models';
 /** Rough income level, from monthly income after tax (see INCOME_BANDS below). */
 export type IncomeLevel = 'lower' | 'middle' | 'higher';
 
+/** What a tip is about, matched against "About you" answers (see topicsFor in utils/budget.ts). */
+export type TipTopic = SavingFocus | 'irregular-income';
+
 export type Tip = {
   /** Unique and never reused. Changing an id changes which day it shows on Home. */
   id: string;
@@ -23,17 +27,64 @@ export type Tip = {
   body: string;
   /** Which income levels see this tip. */
   for: IncomeLevel[];
+  /** Shown first to people whose answers match. */
+  topics?: TipTopic[];
 };
 
 const ALL: IncomeLevel[] = ['lower', 'middle', 'higher'];
 
 export const TIPS: Tip[] = [
+  // ── Matched to "About you" answers ──
+  {
+    id: 'irregular-base-month',
+    title: 'Budget on your quietest month',
+    body: 'When your income varies, plan your spending around a low month. In better months, save the extra instead of spending it.',
+    for: ALL,
+    topics: ['irregular-income'],
+  },
+  {
+    id: 'irregular-save-a-share',
+    title: 'Save a share, not a set amount',
+    body: 'With uneven pay, decide on a percentage to save from every payment that comes in. It adjusts by itself in good and lean months.',
+    for: ALL,
+    topics: ['irregular-income'],
+  },
+  {
+    id: 'travel-price-it-first',
+    title: 'Price the whole trip first',
+    body: 'Add up travel, stay, food and spending money before you start saving. A realistic total makes it a goal you can actually hit.',
+    for: ALL,
+    topics: ['travel'],
+  },
+  {
+    id: 'home-extra-costs',
+    title: 'Remember the costs beyond the deposit',
+    body: 'Buying or moving home comes with fees, moving costs and things for the new place. Add a little on top of your target for them.',
+    for: ALL,
+    topics: ['home'],
+  },
+  {
+    id: 'habit-same-day',
+    title: 'Save on the same day each time',
+    body: 'Pick one day, like payday, to move money to savings. Doing it at the same time every time is what turns it into a habit.',
+    for: ALL,
+    topics: ['habit'],
+  },
+  {
+    id: 'debt-one-at-a-time',
+    title: 'Focus on one debt at a time',
+    body: 'Pay the minimum on everything, then put any extra towards one debt until it’s gone. Each one you clear frees up more for the next.',
+    for: ALL,
+    topics: ['debt'],
+  },
+
   // ── Everyone ──
   {
     id: 'pay-yourself-first',
     title: 'Pay yourself first',
     body: 'Set up an automatic transfer to savings on payday, before you spend anything. Saving what’s left at the end of the month rarely works.',
     for: ALL,
+    topics: ['habit'],
   },
   {
     id: 'track-a-month',
@@ -52,24 +103,28 @@ export const TIPS: Tip[] = [
     title: 'Try the 24-hour rule',
     body: 'For any non-essential purchase, wait a day before buying. If you still want it tomorrow, fine. Often you won’t.',
     for: ALL,
+    topics: ['purchase'],
   },
   {
     id: 'sinking-funds',
     title: 'Save a little for yearly costs',
     body: 'Add up costs that come once a year (insurance, car service, gifts), divide by 12, and put that aside each month so they never catch you out.',
     for: ALL,
+    topics: ['travel', 'purchase'],
   },
   {
     id: 'high-interest-debt',
     title: 'Tackle expensive debt first',
     body: 'If you have credit card or other high-interest debt, paying it off is often the best “return” you can get, usually better than saving at a lower rate.',
     for: ALL,
+    topics: ['debt'],
   },
   {
     id: 'windfalls',
     title: 'Save part of any windfall',
     body: 'When you get unexpected money (a refund, a gift, a bonus), decide on a share to save straight away, before it blends into everyday spending.',
     for: ALL,
+    topics: ['habit', 'debt'],
   },
   {
     id: 'meal-plan',
@@ -84,6 +139,7 @@ export const TIPS: Tip[] = [
     title: 'Start a small emergency fund',
     body: 'Aim for a first buffer of a few hundred, even if you build it slowly. It stops a surprise bill from turning into debt.',
     for: ['lower'],
+    topics: ['emergency'],
   },
   {
     id: 'cut-fixed-costs',
@@ -102,12 +158,14 @@ export const TIPS: Tip[] = [
     title: 'Small amounts count',
     body: 'Saving even a small amount every week builds the habit, and 52 small amounts add up to something real. Start small and increase it when you can.',
     for: ['lower'],
+    topics: ['habit'],
   },
   {
     id: 'avoid-bnpl',
     title: 'Be careful with “buy now, pay later”',
     body: 'Splitting payments makes things feel cheaper than they are, and missed payments can bring fees. Use it only for things you’d buy anyway.',
     for: ['lower', 'middle'],
+    topics: ['debt', 'purchase'],
   },
 
   // ── Middle incomes ──
@@ -116,6 +174,7 @@ export const TIPS: Tip[] = [
     title: 'Grow your emergency fund to 3 months',
     body: 'Once you have a starter buffer, build it towards three months of essential costs, kept somewhere easy to reach that still earns some interest.',
     for: ['middle', 'higher'],
+    topics: ['emergency'],
   },
   {
     id: 'pension-match',
@@ -148,12 +207,14 @@ export const TIPS: Tip[] = [
     title: 'Give long-term goals a job',
     body: 'Once your emergency fund is in place, think about longer-term goals (a home, retirement) and whether some savings should be invested for growth. A regulated adviser can help.',
     for: ['higher'],
+    topics: ['home'],
   },
   {
     id: 'big-purchases',
     title: 'Plan big purchases as goals',
     body: 'For anything large (a car, a holiday), create a goal here and save for it ahead of time instead of paying on credit.',
     for: ['middle', 'higher'],
+    topics: ['purchase', 'travel'],
   },
 ];
 

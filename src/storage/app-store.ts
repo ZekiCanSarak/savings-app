@@ -5,6 +5,7 @@ import { createJSONStorage, persist, type StateStorage } from 'zustand/middlewar
 
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import type {
+  AboutYou,
   AppData,
   Contribution,
   ReminderSettings,
@@ -14,6 +15,7 @@ import type {
 import { nowIsoTimestamp } from '@/utils/dates';
 import type { BackupData } from '@/utils/backup';
 import { createId } from '@/utils/id';
+import { DEFAULT_ABOUT, reminderDefaultsFor } from '@/utils/personal';
 
 import { sanitizeAppData } from './sanitize';
 
@@ -39,15 +41,15 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = 2;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
 export type NewContribution = Omit<Contribution, 'id'>;
 
 type AppActions = {
-  /** Saves the profile from the welcome flow and marks it as done. */
-  completeOnboarding: (profile: UserProfile) => void;
+  /** Saves the profile and "About you" answers from the welcome flow and marks it as done. */
+  completeOnboarding: (profile: UserProfile, about: AboutYou) => void;
   updateProfile: (changes: Partial<UserProfile>) => void;
 
   /** Returns the new goal's id. */
@@ -62,6 +64,12 @@ type AppActions = {
   deleteContribution: (id: string) => void;
 
   updateReminders: (changes: Partial<ReminderSettings>) => void;
+
+  /**
+   * Changes "About you" answers. While reminders are off, their default
+   * schedule follows the pay answers (e.g. the day after payday).
+   */
+  updateAbout: (changes: Partial<AboutYou>) => void;
   dismissReminderPrompt: () => void;
 
   /**
@@ -91,6 +99,7 @@ const initialData: AppData = {
     hour: 18,
     minute: 0,
   },
+  about: DEFAULT_ABOUT,
   reminderPromptDismissed: false,
   goals: [],
   contributions: [],
@@ -102,7 +111,13 @@ export const useAppStore = create<AppState>()(
       ...initialData,
       isReady: false,
 
-      completeOnboarding: (profile) => set({ profile, onboardingComplete: true }),
+      completeOnboarding: (profile, about) =>
+        set((s) => ({
+          profile,
+          about: { ...about, askedAt: nowIsoTimestamp() },
+          reminders: { ...s.reminders, ...reminderDefaultsFor(about) },
+          onboardingComplete: true,
+        })),
       updateProfile: (changes) => set((s) => ({ profile: { ...s.profile, ...changes } })),
 
       addGoal: (goal) => {
@@ -131,10 +146,26 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ contributions: s.contributions.filter((c) => c.id !== id) })),
 
       updateReminders: (changes) => set((s) => ({ reminders: { ...s.reminders, ...changes } })),
+
+      updateAbout: (changes) =>
+        set((s) => {
+          const about = { ...s.about, ...changes };
+          const reminders = s.reminders.enabled
+            ? s.reminders
+            : { ...s.reminders, ...reminderDefaultsFor(about) };
+          return { about, reminders };
+        }),
       dismissReminderPrompt: () => set({ reminderPromptDismissed: true }),
 
-      importBackup: ({ profile, goals, contributions }) =>
-        set({ profile, goals, contributions, onboardingComplete: true }),
+      importBackup: ({ profile, goals, contributions, about }) =>
+        set((s) => ({
+          profile,
+          goals,
+          contributions,
+          // Older backups have no answers; keep this device's then.
+          about: about ?? s.about,
+          onboardingComplete: true,
+        })),
 
       resetAllData: () => set(initialData),
     }),
@@ -147,6 +178,7 @@ export const useAppStore = create<AppState>()(
         onboardingComplete: s.onboardingComplete,
         profile: s.profile,
         reminders: s.reminders,
+        about: s.about,
         reminderPromptDismissed: s.reminderPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
@@ -158,7 +190,8 @@ export const useAppStore = create<AppState>()(
         ...sanitizeAppData(persisted, initialData),
       }),
       migrate: (persisted) => {
-        // No older versions yet. When STORAGE_VERSION goes up, convert old data here.
+        // v1 → v2 added `about`. Nothing to convert: sanitizeAppData fills it with
+        // defaults, and `askedAt: null` makes Home invite the user to answer.
         return persisted as AppData;
       },
       // Runs after loading finishes — also when it fails, so the app never

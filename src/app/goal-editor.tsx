@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { TextField } from '@/components/ui/text-field';
 import { CURRENCIES } from '@/constants/currencies';
-import { DEFAULT_GOAL_EMOJI } from '@/constants/goal-emojis';
+import { DEFAULT_GOAL_EMOJI, GOAL_EMOJIS } from '@/constants/goal-emojis';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAppActions, useContributions, useCurrency, useGoal } from '@/hooks/use-app-data';
 import type { IsoDate } from '@/types/models';
@@ -32,12 +32,17 @@ function close() {
   else router.replace('/goals');
 }
 
+/** A suggestion for a new goal, passed in the URL by Home's starter-goal buttons. */
+type GoalSuggestion = { name?: string; emoji?: string; target?: string };
+
 /**
- * Add a new goal, or edit one when opened with `?id=<goalId>`.
+ * Add a new goal, or edit one when opened with `?id=<goalId>`. A new goal can
+ * be pre-filled with `?name=&emoji=&target=` (target in minor units); the user
+ * can change everything before saving.
  * Presented as a modal over the tabs (see src/app/_layout.tsx).
  */
 export default function GoalEditorScreen() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, ...suggestion } = useLocalSearchParams<{ id?: string } & GoalSuggestion>();
   const existing = useGoal(id ?? '');
 
   if (id && !existing) {
@@ -49,20 +54,41 @@ export default function GoalEditorScreen() {
     );
   }
   // `key` resets the form if a different goal is opened in the same screen.
-  return <GoalForm key={existing?.id ?? 'new'} goalId={existing?.id} />;
+  return (
+    <GoalForm
+      key={existing?.id ?? 'new'}
+      goalId={existing?.id}
+      suggestion={existing ? undefined : suggestion}
+    />
+  );
 }
 
-function GoalForm({ goalId }: { goalId?: string }) {
+/** Only accept a suggestion that would pass validation anyway. */
+function cleanSuggestion(suggestion: GoalSuggestion = {}) {
+  const target = Number(suggestion.target);
+  return {
+    name: suggestion.name?.slice(0, GOAL_NAME_MAX_LENGTH) ?? '',
+    emoji: (GOAL_EMOJIS as readonly string[]).includes(suggestion.emoji ?? '')
+      ? (suggestion.emoji as string)
+      : DEFAULT_GOAL_EMOJI,
+    target: Number.isSafeInteger(target) && target > 0 ? target : null,
+  };
+}
+
+function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSuggestion }) {
   const existing = useGoal(goalId ?? '');
   const contributions = useContributions();
   const currency = useCurrency();
   const { addGoal, updateGoal } = useAppActions();
   const isEditing = existing !== undefined;
+  const [suggested] = useState(() => cleanSuggestion(suggestion));
 
-  const [name, setName] = useState(existing?.name ?? '');
-  const [targetText, setTargetText] = useState(amountToInputText(existing?.targetAmount ?? null));
+  const [name, setName] = useState(existing?.name ?? suggested.name);
+  const [targetText, setTargetText] = useState(
+    amountToInputText(existing?.targetAmount ?? suggested.target),
+  );
   const [targetDate, setTargetDate] = useState<IsoDate | null>(existing?.targetDate ?? null);
-  const [emoji, setEmoji] = useState(existing?.emoji ?? DEFAULT_GOAL_EMOJI);
+  const [emoji, setEmoji] = useState(existing?.emoji ?? suggested.emoji);
   const [nameError, setNameError] = useState<string | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
