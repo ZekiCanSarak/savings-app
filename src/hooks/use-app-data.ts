@@ -75,6 +75,16 @@ export function useFeedbackPrompt() {
   );
 }
 
+export function useBackupPrompt() {
+  return useAppStore(
+    useShallow((s) => ({ lastBackupAt: s.lastBackupAt, snoozedAt: s.backupPromptSnoozedAt })),
+  );
+}
+
+export function useInstallPromptDismissed() {
+  return useAppStore((s) => s.installPromptDismissed);
+}
+
 export function useGoals() {
   return useAppStore((s) => s.goals);
 }
@@ -132,6 +142,11 @@ export function useAppActions() {
       endDemo: s.endDemo,
       markIntroSeen: s.markIntroSeen,
       dismissFeedbackPrompt: s.dismissFeedbackPrompt,
+      setRepeatingSaving: s.setRepeatingSaving,
+      logRepeatingSavings: s.logRepeatingSavings,
+      markBackedUp: s.markBackedUp,
+      snoozeBackupPrompt: s.snoozeBackupPrompt,
+      dismissInstallPrompt: s.dismissInstallPrompt,
       resetAllData: s.resetAllData,
     })),
   );

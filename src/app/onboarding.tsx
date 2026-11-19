@@ -22,6 +22,7 @@ import { CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppActions, useIntroSeen } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
+import { isInstalledWebApp } from '@/services/web-app';
 import type { AboutYou, CurrencyCode } from '@/types/models';
 import { DEFAULT_ABOUT } from '@/utils/personal';
 import {
@@ -52,13 +53,6 @@ const QUESTION_FOR: Partial<Record<Step, { title: string; intro: string }>> = {
   budget: QUESTIONS.budget,
   guidance: QUESTIONS.guidance,
 };
-
-/** Opened from the home screen icon (an installed web app) rather than in a browser tab. */
-function isInstalledWebApp(): boolean {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return false;
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return window.matchMedia?.('(display-mode: standalone)').matches || nav.standalone === true;
-}
 
 /**
  * Welcome flow shown the first time the app opens (see the guard in _layout.tsx).

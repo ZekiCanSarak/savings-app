@@ -7,10 +7,12 @@ import { Appearance, Platform } from 'react-native';
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { AppLockGate } from '@/components/app-lock-gate';
 import { ReminderScheduler } from '@/components/reminders/reminder-scheduler';
+import { RepeatingSaver } from '@/components/repeating/repeating-saver';
 import { Colors } from '@/constants/theme';
 import { useAppearance, useIsDataReady, useIsOnboarded } from '@/hooks/use-app-data';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { configureNotifications } from '@/services/notifications';
+import { requestPersistentStorage } from '@/services/web-app';
 
 SplashScreen.preventAutoHideAsync();
 configureNotifications();
@@ -57,6 +59,11 @@ export default function RootLayout() {
     Appearance.setColorScheme(appearance === 'system' ? 'unspecified' : appearance);
   }, [appearance]);
 
+  // Once someone has data worth keeping, ask the browser not to clear it (no-op on phones).
+  useEffect(() => {
+    if (isOnboarded) void requestPersistentStorage();
+  }, [isOnboarded]);
+
   // Keep the splash screen up until saved data has loaded, so screens never
   // flash empty data. (AnimatedSplashOverlay hides the splash when it mounts.)
   if (!isDataReady) return null;
@@ -66,6 +73,7 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       <AnimatedSplashOverlay />
       {isOnboarded && <ReminderScheduler />}
+      {isOnboarded && <RepeatingSaver />}
       {isOnboarded && <AppLockGate />}
       {/*
         Protected routes: only one of these is reachable at a time. When onboarding
@@ -86,6 +94,8 @@ export default function RootLayout() {
           <Stack.Screen name="split-money" options={{ presentation: 'modal' }} />
           {/* A summary of a year's saving, opened with ?year=2026. */}
           <Stack.Screen name="year-review" options={{ presentation: 'modal' }} />
+          {/* Set up or change a goal's repeating saving, opened with ?goalId=. */}
+          <Stack.Screen name="repeating-saving" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!isOnboarded}>
           <Stack.Screen name="onboarding" />

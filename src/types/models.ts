@@ -22,6 +22,19 @@ export type UserProfile = {
   monthlyIncome: number | null;
 };
 
+/**
+ * A fixed amount saved every month, like a standing order. On (or after) each
+ * month's day, the app logs it as a normal contribution with the note "Repeating".
+ */
+export type RepeatingSaving = {
+  /** Amount in minor units. */
+  amount: number;
+  /** Day of the month, 1–31. The 29th–31st fall on a shorter month's last day. */
+  dayOfMonth: number;
+  /** The latest day already logged or skipped; only later days get logged. */
+  loggedThrough: IsoDate;
+};
+
 export type SavingsGoal = {
   id: string;
   name: string;
@@ -32,6 +45,8 @@ export type SavingsGoal = {
   /** A single emoji shown next to the goal, e.g. '💻'. */
   emoji: string;
   createdAt: IsoTimestamp;
+  /** Saved automatically every month. Missing = none. */
+  repeating?: RepeatingSaving;
 };
 
 export type Contribution = {
@@ -137,6 +152,12 @@ export type AppData = {
   startedAt: IsoTimestamp | null;
   /** The user answered or closed Home's one-time "What do you think?" card. */
   feedbackPromptDismissed: boolean;
+  /** When the user last exported a backup file. */
+  lastBackupAt: IsoTimestamp | null;
+  /** When the user last tapped "Later" on Home's backup reminder. */
+  backupPromptSnoozedAt: IsoTimestamp | null;
+  /** The user closed the web "Add to your home screen" card. */
+  installPromptDismissed: boolean;
   goals: SavingsGoal[];
   contributions: Contribution[];
 };

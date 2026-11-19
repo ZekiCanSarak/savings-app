@@ -13,7 +13,7 @@ export const CHECK_IN_DAYS = 3;
 const WEEK_NAMES: Record<WeekOfMonth, string> = { 1: 'first', 2: 'second', 3: 'third', 4: 'fourth', [-1]: 'last' };
 
 /** A day of a month, moved back to the month's last day if it's too short (31 → 30 April). */
-function dayInMonth(year: number, month: number, day: number): IsoDate {
+export function dayInMonth(year: number, month: number, day: number): IsoDate {
   const lastDay = new Date(year, month + 1, 0).getDate();
   return toIsoDate(new Date(year, month, Math.min(day, lastDay)));
 }

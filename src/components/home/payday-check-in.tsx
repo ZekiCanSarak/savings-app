@@ -58,7 +58,8 @@ export function PaydayCheckIn({ index }: PaydayCheckInProps) {
 
   const today = todayIsoDate();
   const payday = paydayToCheckIn(about, answeredFor, today);
-  const goal = goalsNeedingAttention(goals, contributions, today)[0];
+  // Goals with a repeating saving already get money on their own day.
+  const goal = goalsNeedingAttention(goals, contributions, today).find((g) => !g.repeating);
   if (!payday || !goal) return null;
 
   // The suggested saving for one payday, never more than the goal still needs.

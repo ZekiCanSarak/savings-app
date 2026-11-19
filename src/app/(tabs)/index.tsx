@@ -5,6 +5,8 @@ import { AdviceNote } from '@/components/budget/advice-note';
 import { TipCard } from '@/components/budget/tip-card';
 import { GoalProgressBars } from '@/components/charts/goal-progress-bars';
 import { FeedbackCard } from '@/components/feedback/feedback-card';
+import { BackupReminderCard } from '@/components/home/backup-reminder-card';
+import { InstallCard } from '@/components/home/install-card';
 import { PaydayCheckIn } from '@/components/home/payday-check-in';
 import { SavingsSummary } from '@/components/home/savings-summary';
 import { StreakCard } from '@/components/home/streak-card';
@@ -119,6 +121,8 @@ export default function HomeScreen() {
       <PaydayCheckIn index={0} />
       <YearReviewCard index={1} />
       <FeedbackCard index={1} />
+      <InstallCard index={1} />
+      <BackupReminderCard index={1} />
 
       {goals.length === 0 ? (
         starterGoal && focus ? (

@@ -99,3 +99,35 @@ export function parseBackup(text: string): ValidationResult<BackupData> {
     },
   };
 }
+
+/** Days between backup reminders on Home. */
+export const BACKUP_REMINDER_DAYS = 30;
+
+/**
+ * Home's backup reminder: due once it's been a month since the last backup,
+ * the last "Later", or (never backed up) since the user started. Only when
+ * there's something worth keeping, and never in the demo.
+ */
+export function shouldRemindBackup(
+  {
+    lastBackupAt,
+    snoozedAt,
+    startedAt,
+    hasSavings,
+    demo,
+  }: {
+    lastBackupAt: IsoTimestamp | null;
+    snoozedAt: IsoTimestamp | null;
+    startedAt: IsoTimestamp | null;
+    hasSavings: boolean;
+    demo: boolean;
+  },
+  now: Date = new Date(),
+): boolean {
+  if (!hasSavings || demo) return false;
+  const since = [lastBackupAt, snoozedAt, startedAt]
+    .filter((t): t is string => t !== null)
+    .map((t) => Date.parse(t));
+  if (since.length === 0) return false;
+  return now.getTime() - Math.max(...since) >= BACKUP_REMINDER_DAYS * 24 * 60 * 60 * 1000;
+}

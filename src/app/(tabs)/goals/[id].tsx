@@ -28,12 +28,15 @@ import type { Contribution } from '@/types/models';
 import {
   formatDate,
   formatMonthYear,
+  formatRelativeDay,
   relativeDayInSentence,
   savingMonthsLeft,
   toIsoDate,
 } from '@/utils/dates';
 import { formatMoney } from '@/utils/money';
 import { perPayPeriod } from '@/utils/personal';
+import { ordinal } from '@/utils/reminders';
+import { nextRepeatingPayment, skipNextRepeating } from '@/utils/repeating';
 
 /** Leaves this screen; falls back to the list if there's nothing to go back to (e.g. web refresh). */
 function goBackToList() {
@@ -60,7 +63,7 @@ export default function GoalDetailScreen() {
   const history = useGoalContributions(id);
   const contributions = useContributions();
   const currency = useCurrency();
-  const { deleteGoal, deleteContribution } = useAppActions();
+  const { deleteGoal, deleteContribution, setRepeatingSaving } = useAppActions();
   const reduceMotion = useReducedMotion();
   const about = useAbout();
   const theme = useTheme();
@@ -214,6 +217,66 @@ export default function GoalDetailScreen() {
           </Card>
         )}
 
+        {goal.repeating ? (
+          <Card title="Repeating saving" index={1}>
+            {(() => {
+              const next = nextRepeatingPayment(goal, contributions);
+              return (
+                <View style={styles.repeating} accessible>
+                  <ThemedText>
+                    <ThemedText type="defaultBold">{money(goal.repeating.amount)}</ThemedText> on the{' '}
+                    {ordinal(goal.repeating.dayOfMonth)} of every month, logged for you.
+                  </ThemedText>
+                  <ThemedText type="small" themeColor="textSecondary">
+                    {next
+                      ? `Next one: ${formatRelativeDay(next)}`
+                      : 'Paused: this goal is reached. It starts again if you raise the target.'}
+                  </ThemedText>
+                </View>
+              );
+            })()}
+            <View style={styles.buttonRow}>
+              <View style={styles.flex}>
+                <Button
+                  title="Change"
+                  variant="secondary"
+                  accessibilityHint="Change the amount or day, or stop it"
+                  onPress={() =>
+                    router.push({ pathname: '/repeating-saving', params: { goalId: goal.id } })
+                  }
+                />
+              </View>
+              {!complete && goal.repeating && (
+                <View style={styles.flex}>
+                  <Button
+                    title="Skip next"
+                    variant="secondary"
+                    accessibilityHint="The next payment won’t be logged"
+                    onPress={() => {
+                      if (goal.repeating) setRepeatingSaving(goal.id, skipNextRepeating(goal.repeating));
+                    }}
+                  />
+                </View>
+              )}
+            </View>
+          </Card>
+        ) : (
+          !complete && (
+            <Card
+              title="Save automatically"
+              subtitle="Put the same amount aside every month, like a standing order? Goalpot can log it for you."
+              index={1}>
+              <Button
+                title="Set up a repeating saving"
+                variant="secondary"
+                onPress={() =>
+                  router.push({ pathname: '/repeating-saving', params: { goalId: goal.id } })
+                }
+              />
+            </Card>
+          )
+        )}
+
         {!complete && (
           <Card title="What if?" subtitle="Try a different monthly amount" index={2}>
             <WhatIfPlanner
@@ -276,6 +339,16 @@ export default function GoalDetailScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  repeating: {
+    gap: Spacing.one,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  flex: {
     flex: 1,
   },
   notFound: {

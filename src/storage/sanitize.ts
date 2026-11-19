@@ -6,10 +6,13 @@ import type {
   AppData,
   Contribution,
   CurrencyCode,
+  RepeatingSaving,
   ReminderSettings,
   SavingsGoal,
   UserProfile,
 } from '@/types/models';
+import { todayIsoDate } from '@/utils/dates';
+import { MAX_GOAL_TARGET } from '@/utils/validation';
 
 /**
  * Repairs data loaded from storage so a bad or outdated save can never crash
@@ -38,6 +41,22 @@ export function sanitizeProfile(value: unknown, fallback: UserProfile): UserProf
   };
 }
 
+/** A valid repeating saving as `{ repeating }`, or `{}` to drop a broken one. */
+function sanitizeRepeating(value: unknown): { repeating?: RepeatingSaving } {
+  if (!isObject(value) || !isPositiveWhole(value.amount) || value.amount > MAX_GOAL_TARGET) return {};
+  return {
+    repeating: {
+      amount: value.amount,
+      dayOfMonth: clampWhole(value.dayOfMonth, 1, 31, 1),
+      // Without a valid date, start from today rather than logging past months.
+      loggedThrough:
+        typeof value.loggedThrough === 'string' && ISO_DATE.test(value.loggedThrough)
+          ? value.loggedThrough
+          : todayIsoDate(),
+    },
+  };
+}
+
 export function sanitizeGoals(value: unknown): SavingsGoal[] {
   if (!Array.isArray(value)) return [];
   const seen = new Set<string>();
@@ -56,6 +75,7 @@ export function sanitizeGoals(value: unknown): SavingsGoal[] {
           typeof g.createdAt === 'string' && !Number.isNaN(Date.parse(g.createdAt))
             ? g.createdAt
             : new Date().toISOString(),
+        ...sanitizeRepeating(g.repeating),
       },
     ];
   });
@@ -133,6 +153,9 @@ export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
   };
 }
 
+const timestampOrNull = (v: unknown): string | null =>
+  typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : null;
+
 export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
   if (!isObject(saved)) return defaults;
   const goals = sanitizeGoals(saved.goals);
@@ -158,6 +181,9 @@ export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
         ? saved.startedAt
         : null,
     feedbackPromptDismissed: saved.feedbackPromptDismissed === true,
+    lastBackupAt: timestampOrNull(saved.lastBackupAt),
+    backupPromptSnoozedAt: timestampOrNull(saved.backupPromptSnoozedAt),
+    installPromptDismissed: saved.installPromptDismissed === true,
     goals,
     contributions: sanitizeContributions(saved.contributions, new Set(goals.map((g) => g.id))),
   };

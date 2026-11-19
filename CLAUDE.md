@@ -32,6 +32,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Payday check-in on Home, "What if" planner on goal detail, take money out, saving streaks + "Your months" history, split a lump sum, reached goals shelf, light/dark switch, year in review, Face ID / passcode lock (phone only)
 - [x] Personalisation ("About you"): saving focus, pay frequency + payday, emergency fund, budget style, guidance level, confetti. Asked in onboarding, editable in Settings, Home invites existing users to answer
 - [x] Sharing: web landing page for first-time visitors, "Try the demo" with sample data, feedback form (Home card after 5 days, Settings, landing), link preview image
+- [x] Repeating savings (logged automatically each month), data protection (persistent web storage, "add to home screen" card, monthly backup reminder, last backup in Settings)
 
 Update this list as features land.
 
@@ -93,7 +94,9 @@ Update this list as features land.
 - **Year in review** (`app/year-review.tsx?year=`, `utils/year-review.ts`): net saved, savings count, goals reached (`goalReachedOn`), best month, longest streak. Home's card shows in December (this year) and January (last year) until `yearReviewDismissed`; Settings and Budget link to it any time.
 - **Appearance** (`AppData.appearance`): `hooks/use-color-scheme(.web).ts` return the choice or the system setting, and the root layout calls `Appearance.setColorScheme` on phones so native UI matches. Always get light/dark from `@/hooks/use-color-scheme` (or `useTheme`), never `useColorScheme` from react-native.
 - **App lock** (`AppData.appLock`, phone only): `services/app-lock.ts` is the only file importing `expo-local-authentication` (web stub: `app-lock.web.ts`). `components/app-lock-gate.tsx` (root layout, after onboarding) shows a native `Modal` lock screen at launch and on returning from the background (not on `inactive`, which the Face ID prompt itself triggers). Turning the lock on or off asks for authentication first; with no passcode set up it explains instead.
-- Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`, `demo`, `startedAt`, `feedbackPromptDismissed`) are not in backups; withdrawals and `payWeekday` are.
+- **Repeating savings** (`SavingsGoal.repeating`, `utils/repeating.ts`, `app/repeating-saving.tsx?goalId=`): "£100 on the 1st of every month". `useRepeatingSavings` (via `RepeatingSaver`, root layout after onboarding) calls `logRepeatingSavings` at launch, when goals change, on foreground and hourly. `dueRepeatingSavings` turns every month's day after `loggedThrough` (up to today, at most 24) into a normal contribution with note "Repeating", capped so a goal never goes past its target; `loggedThrough` moves on even when nothing is logged, so deleted entries and reached goals don't backfill. New ones start from today (`newRepeatingSaving` sets `loggedThrough` to yesterday); "Skip next" moves `loggedThrough` to the next date. Days 29–31 use `dayInMonth` (short months → last day). The payday check-in skips goals that have one. Goals (and so `repeating`) are in backups; backup version unchanged because the field is optional.
+- **Data protection:** everything lives on the device, so: `services/web-app(.web).ts` asks the browser for persistent storage once onboarded (`requestPersistentStorage`; Safari otherwise clears site data after ~7 days without a visit unless installed) and has `isInstalledWebApp` / `installDevice`. Home's `InstallCard` (web, not installed, has a goal, until "Got it") explains and shows the device's steps. `BackupReminderCard` (all platforms) shows when `shouldRemindBackup` (30 days since the latest of `lastBackupAt`, `backupPromptSnoozedAt`, `startedAt`; needs savings; never in the demo). Exports go through `hooks/use-export-backup.ts`, which sets `lastBackupAt`; Settings shows "Last backup".
+- Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`, `demo`, `startedAt`, `feedbackPromptDismissed`, `lastBackupAt`, `backupPromptSnoozedAt`, `installPromptDismissed`) are not in backups; withdrawals and `payWeekday` are.
 - Month numbers in `YearMonth` are 0–11 (JavaScript `Date`); `'YYYY-MM'` keys need `month + 1`.
 
 ## Export / import
@@ -141,6 +144,7 @@ src/
     about-you.tsx       Modal: all "About you" questions, saved as they're tapped
     split-money.tsx     Modal: share one amount between several goals
     year-review.tsx     Modal: a year's saving at a glance (?year=2026)
+    repeating-saving.tsx  Modal: set up / change / stop a goal's repeating saving (?goalId=)
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -164,7 +168,9 @@ src/
     reminders/          reminder-settings.tsx (Settings section), reminder-messages.tsx (Home),
                         reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
     home/               savings-summary.tsx (hero total + stat tiles), payday-check-in.tsx,
-                        streak-card.tsx, year-review-card.tsx
+                        streak-card.tsx, year-review-card.tsx, backup-reminder-card.tsx,
+                        install-card.tsx (web)
+    repeating/          repeating-saver.tsx (invisible, in root layout)
     landing/            landing-page.web.tsx (web landing page), landing-page.tsx (native stub)
     demo/               demo-banner.tsx ("You're looking at sample data")
     feedback/           feedback-card.tsx (Home, once after a few days)
@@ -186,6 +192,8 @@ src/
     use-reminder-scheduler.ts   Reschedules the reminder when data changes
     use-notification-permission.ts  Current permission, re-checked on foreground
     use-theme.ts        Current theme colours
+    use-repeating-savings.ts  Logs repeating savings when they fall due
+    use-export-backup.ts  Exports a backup file and records lastBackupAt
   services/
     notifications.ts    The ONLY file that imports expo-notifications
     notifications.web.ts  Web stand-in with the same exports (does nothing)
@@ -195,6 +203,7 @@ src/
     app-lock.web.ts     Web stand-in (lock not supported)
     feedback.ts         Opens the feedback form
     confirm.ts          Yes/no dialog (Alert on phones, window.confirm on web)
+    web-app.ts          Persistent storage, installed-app and device checks (web-app.web.ts; no-ops on phones)
   storage/
     app-store.ts        Zustand store, saved to AsyncStorage
     sanitize.ts         Repairs loaded data so a bad save can't crash the app
@@ -208,7 +217,7 @@ src/
     money.ts            formatMoney (per-currency locale), parseMoneyInput
     dates.ts            ISO date helpers and formatting
     validation.ts       Form validators (name, income, goal, contribution amount/date/note)
-    backup.ts           createBackup / parseBackup for export and import
+    backup.ts           createBackup / parseBackup for export and import, shouldRemindBackup
     personal.ts         "About you" options and what each answer changes
     payday.ts           lastPayday, paydayToCheckIn
     planner.ts          whatIf, plannerStep, plannerStart
@@ -216,6 +225,7 @@ src/
     split.ts            splitEvenly, splitByNeed
     year-review.ts      yearReview, goalReachedOn, reviewYearToShow
     feedback.ts         shouldAskForFeedback
+    repeating.ts        dueRepeatingSavings, nextRepeatingPayment, skipNextRepeating
     id.ts               createId
 assets/                 Images, icons, splash
 public/                 Copied to the web site root: manifest.json, PWA icons, og-image.png

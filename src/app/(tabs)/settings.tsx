@@ -18,16 +18,18 @@ import {
   useAppActions,
   useAppearance,
   useAppLock,
+  useBackupPrompt,
   useContributions,
   useGoals,
   useProfile,
 } from '@/hooks/use-app-data';
+import { useExportBackup } from '@/hooks/use-export-backup';
 import { useTheme } from '@/hooks/use-theme';
 import { appLockSupported, authenticate, lockAvailability } from '@/services/app-lock';
-import { pickBackupFile, saveBackupFile } from '@/services/backup-file';
+import { pickBackupFile } from '@/services/backup-file';
 import { cancelAllReminders, notificationsSupported } from '@/services/notifications';
 import type { AboutYou, Appearance, CurrencyCode } from '@/types/models';
-import { backupFileName, createBackup, parseBackup, type BackupData } from '@/utils/backup';
+import { parseBackup, type BackupData } from '@/utils/backup';
 import {
   BUDGET_STYLE_INFO,
   EMERGENCY_INFO,
@@ -35,6 +37,7 @@ import {
   GUIDANCE_INFO,
   PAY_INFO,
 } from '@/utils/personal';
+import { formatRelativeDay, toIsoDate } from '@/utils/dates';
 import { describePaySchedule } from '@/utils/payday';
 import { ordinal, weekdayName } from '@/utils/reminders';
 import { feedbackEnabled, openFeedback } from '@/services/feedback';
@@ -100,6 +103,8 @@ export default function SettingsScreen() {
   const about = useAbout();
   const appearance = useAppearance();
   const appLock = useAppLock();
+  const exportBackup = useExportBackup();
+  const { lastBackupAt } = useBackupPrompt();
   const theme = useTheme();
   const { updateProfile, resetAllData, importBackup, setAppearance, setAppLock } = useAppActions();
   const [lockMessage, setLockMessage] = useState<string | null>(null);
@@ -160,11 +165,8 @@ export default function SettingsScreen() {
 
   async function handleExport() {
     setDataMessage(null);
-    try {
-      // Saves what's stored, not unsaved edits in the form above.
-      await saveBackupFile(backupFileName(), createBackup({ profile, goals, contributions, about }));
-    } catch (error) {
-      console.warn('Export failed', error);
+    // Saves what's stored, not unsaved edits in the form above.
+    if (!(await exportBackup())) {
       setDataMessage({ tone: 'error', text: 'Couldn’t export your data. Please try again.' });
     }
   }
@@ -373,7 +375,11 @@ export default function SettingsScreen() {
 
       <Card
         title="Your data"
-        subtitle="Everything is stored only on this device. Export a backup file to keep a copy or move to another device."
+        subtitle={`Everything is stored only on this device. Export a backup file to keep a copy or move to another device. ${
+          lastBackupAt
+            ? `Last backup: ${formatRelativeDay(toIsoDate(new Date(lastBackupAt)))}.`
+            : 'You haven’t made a backup yet.'
+        }`}
         index={3}>
         <Button
           title="Export my data"

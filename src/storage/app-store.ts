@@ -10,6 +10,7 @@ import type {
   AppData,
   Appearance,
   Contribution,
+  RepeatingSaving,
   ReminderSettings,
   SavingsGoal,
   UserProfile,
@@ -18,6 +19,7 @@ import { nowIsoTimestamp } from '@/utils/dates';
 import type { BackupData } from '@/utils/backup';
 import { createId } from '@/utils/id';
 import { DEFAULT_ABOUT, reminderDefaultsFor } from '@/utils/personal';
+import { dueRepeatingSavings } from '@/utils/repeating';
 
 import { sanitizeAppData } from './sanitize';
 
@@ -43,7 +45,7 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 5;
+const STORAGE_VERSION = 6;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -96,6 +98,16 @@ type AppActions = {
   markIntroSeen: () => void;
   dismissFeedbackPrompt: () => void;
 
+  /** Sets, changes or (with null) stops a goal's repeating saving. */
+  setRepeatingSaving: (goalId: string, repeating: RepeatingSaving | null) => void;
+  /** Logs every repeating saving that has fallen due (see utils/repeating.ts). */
+  logRepeatingSavings: (today?: string) => void;
+
+  /** A backup file was just exported. */
+  markBackedUp: () => void;
+  snoozeBackupPrompt: () => void;
+  dismissInstallPrompt: () => void;
+
   /** Wipes everything back to a fresh install. */
   resetAllData: () => void;
 };
@@ -128,6 +140,9 @@ const initialData: AppData = {
   demo: false,
   startedAt: null,
   feedbackPromptDismissed: false,
+  lastBackupAt: null,
+  backupPromptSnoozedAt: null,
+  installPromptDismissed: false,
   goals: [],
   contributions: [],
 };
@@ -222,6 +237,33 @@ export const useAppStore = create<AppState>()(
       markIntroSeen: () => set({ introSeen: true }),
       dismissFeedbackPrompt: () => set({ feedbackPromptDismissed: true }),
 
+      setRepeatingSaving: (goalId, repeating) =>
+        set((s) => ({
+          goals: s.goals.map((g) => {
+            if (g.id !== goalId) return g;
+            if (repeating) return { ...g, repeating };
+            const { repeating: _removed, ...rest } = g;
+            return rest;
+          }),
+        })),
+      logRepeatingSavings: (today) =>
+        set((s) => {
+          const due = dueRepeatingSavings(s.goals, s.contributions, today);
+          if (Object.keys(due.loggedThrough).length === 0) return s;
+          return {
+            contributions: [...s.contributions, ...due.contributions.map((c) => ({ ...c, id: createId() }))],
+            goals: s.goals.map((g) =>
+              g.repeating && due.loggedThrough[g.id]
+                ? { ...g, repeating: { ...g.repeating, loggedThrough: due.loggedThrough[g.id] } }
+                : g,
+            ),
+          };
+        }),
+
+      markBackedUp: () => set({ lastBackupAt: nowIsoTimestamp() }),
+      snoozeBackupPrompt: () => set({ backupPromptSnoozedAt: nowIsoTimestamp() }),
+      dismissInstallPrompt: () => set({ installPromptDismissed: true }),
+
       resetAllData: () => set(initialData),
     }),
     {
@@ -242,6 +284,9 @@ export const useAppStore = create<AppState>()(
         demo: s.demo,
         startedAt: s.startedAt,
         feedbackPromptDismissed: s.feedbackPromptDismissed,
+        lastBackupAt: s.lastBackupAt,
+        backupPromptSnoozedAt: s.backupPromptSnoozedAt,
+        installPromptDismissed: s.installPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
       }),
@@ -254,7 +299,8 @@ export const useAppStore = create<AppState>()(
       migrate: (persisted, version) => {
         // v1 → v2 added `about`; v2 → v3 added appearance, appLock, paydayCheckIn,
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
-        // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed.
+        // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed;
+        // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         const data = persisted as AppData;
