@@ -1,5 +1,6 @@
 import type { IsoDate } from '@/types/models';
 import { todayIsoDate } from '@/utils/dates';
+import { MAX_INTEREST_RATE } from '@/utils/interest';
 import { parseMoneyInput } from '@/utils/money';
 
 /**
@@ -145,6 +146,29 @@ export function validateContributionDate(
 }
 
 /** Shows a stored amount in an input box: 185050 → '1850.50', 185000 → '1850'. */
+/**
+ * Optional yearly interest rate for a goal, e.g. '4', '4.5', '4,25%'.
+ * Blank or 0 means no interest (null). Stored in hundredths of a percent.
+ */
+export function validateInterestRate(text: string): ValidationResult<number | null> {
+  const cleaned = text.replace(/%/g, '').replace(/\s/g, '').replace(',', '.');
+  if (cleaned === '') return { ok: true, value: null };
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(cleaned)) {
+    return { ok: false, error: 'Enter the rate as a number, like 4 or 4.25.' };
+  }
+  const rate = Math.round(Number(cleaned) * 100);
+  if (rate === 0) return { ok: true, value: null };
+  if (rate > MAX_INTEREST_RATE) {
+    return { ok: false, error: 'That looks too high. Check the yearly rate your bank shows (up to 20%).' };
+  }
+  return { ok: true, value: rate };
+}
+
+/** A stored rate back as input text: 425 → '4.25'. */
+export function interestRateToInputText(rate: number | undefined): string {
+  return rate ? String(rate / 100) : '';
+}
+
 export function amountToInputText(minorUnits: number | null): string {
   if (minorUnits === null) return '';
   const whole = Math.floor(minorUnits / 100);

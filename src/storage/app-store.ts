@@ -45,15 +45,19 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 6;
+const STORAGE_VERSION = 7;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
 export type NewContribution = Omit<Contribution, 'id'>;
 
 type AppActions = {
-  /** Saves the profile and "About you" answers from the welcome flow and marks it as done. */
-  completeOnboarding: (profile: UserProfile, about: AboutYou) => void;
+  /**
+   * Saves the profile from the (short) welcome flow and marks it as done. The
+   * "About you" answers stay unasked (`askedAt: null`), so Home invites the
+   * user to complete their profile.
+   */
+  completeOnboarding: (profile: UserProfile) => void;
   updateProfile: (changes: Partial<UserProfile>) => void;
 
   /** Returns the new goal's id. */
@@ -154,11 +158,10 @@ export const useAppStore = create<AppState>()(
       isReady: false,
       introSeen: false,
 
-      completeOnboarding: (profile, about) =>
+      completeOnboarding: (profile) =>
         set((s) => ({
           profile,
-          about: { ...about, askedAt: nowIsoTimestamp() },
-          reminders: { ...s.reminders, ...reminderDefaultsFor(about) },
+          reminders: { ...s.reminders, ...reminderDefaultsFor(s.about) },
           onboardingComplete: true,
           demo: false,
           startedAt: nowIsoTimestamp(),
@@ -300,7 +303,8 @@ export const useAppStore = create<AppState>()(
         // v1 → v2 added `about`; v2 → v3 added appearance, appLock, paydayCheckIn,
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
         // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed;
-        // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed.
+        // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed;
+        // v6 → v7 added goal.interestRate.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         const data = persisted as AppData;

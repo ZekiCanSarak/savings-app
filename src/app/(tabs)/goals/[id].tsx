@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
+import { AdviceNote } from '@/components/budget/advice-note';
 import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
@@ -11,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { TextButton } from '@/components/ui/text-button';
 import { Confetti } from '@/components/ui/confetti';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { BottomTabInset, MaxContentWidth, Radius, ScreenPadding, Spacing } from '@/constants/theme';
@@ -33,6 +35,7 @@ import {
   savingMonthsLeft,
   toIsoDate,
 } from '@/utils/dates';
+import { formatRate, interestEarned } from '@/utils/interest';
 import { formatMoney } from '@/utils/money';
 import { perPayPeriod } from '@/utils/personal';
 import { ordinal } from '@/utils/reminders';
@@ -212,6 +215,7 @@ export default function GoalDetailScreen() {
                 <ThemedText type="defaultBold">{money(progress.monthlyNeeded)}</ThemedText>{' '}
                 per month to reach this by {formatMonthYear(goal.targetDate)}.
                 {perPay ? ` That’s about ${money(perPay.amount)} ${perPay.per}.` : ''}
+                {goal.interestRate ? ' This includes the interest your bank pays.' : ''}
               </ThemedText>
             ) : (
               <ThemedText themeColor="textSecondary">
@@ -219,8 +223,68 @@ export default function GoalDetailScreen() {
                 {money(progress.remaining)} to go. Edit the goal to pick a new date.
               </ThemedText>
             )}
+            {!goal.interestRate && (
+              <TextButton
+                title="Earning interest on this? Add your rate"
+                accessibilityHint="Opens the goal editor, where you can enter your bank’s interest rate"
+                onPress={() => router.push({ pathname: '/goal-editor', params: { id: goal.id } })}
+              />
+            )}
           </Card>
         )}
+
+        {!complete && goal.interestRate ? (
+          <Card
+            title="Interest (estimate)"
+            index={1}
+            action={
+              <TextButton
+                title="Change"
+                accessibilityLabel="Change interest rate"
+                onPress={() => router.push({ pathname: '/goal-editor', params: { id: goal.id } })}
+              />
+            }>
+            {(() => {
+              const rate = goal.interestRate ?? 0;
+              const months = goal.targetDate ? savingMonthsLeft(goal.targetDate) : 0;
+              const monthly = progress.monthlyNeeded ?? 0;
+              if (goal.targetDate && months > 0 && monthly > 0) {
+                const earned = interestEarned(progress.saved, monthly, months, rate);
+                return (
+                  <ThemedText>
+                    At <ThemedText type="defaultBold">{formatRate(rate)} a year</ThemedText>, about{' '}
+                    <ThemedText type="defaultBold">{money(earned)}</ThemedText> of this goal should
+                    come from interest if you save {money(monthly)} a month until{' '}
+                    {formatMonthYear(goal.targetDate)}.
+                  </ThemedText>
+                );
+              }
+              if (progress.saved > 0) {
+                return (
+                  <ThemedText>
+                    At <ThemedText type="defaultBold">{formatRate(rate)} a year</ThemedText>, the{' '}
+                    {money(progress.saved)} you’ve saved would earn about{' '}
+                    <ThemedText type="defaultBold">
+                      {money(interestEarned(progress.saved, 0, 12, rate))}
+                    </ThemedText>{' '}
+                    over the next year.
+                  </ThemedText>
+                );
+              }
+              return (
+                <ThemedText>
+                  Once you’ve saved something, interest at {formatRate(rate)} a year will help it grow.
+                </ThemedText>
+              );
+            })()}
+            <ThemedText type="small" themeColor="textSecondary">
+              This uses the rate you entered from your bank. Goalpot doesn’t hold your money, and
+              banks change their rates, so treat it as an estimate. When your bank pays interest,
+              log it with “Add money” (note: Interest) so your total matches your account.
+            </ThemedText>
+            <AdviceNote short />
+          </Card>
+        ) : null}
 
         {goal.repeating ? (
           <Card title="Repeating saving" index={1}>
@@ -306,6 +370,7 @@ export default function GoalDetailScreen() {
               targetDate={goal.targetDate}
               currency={currency}
               payFrequency={about.payFrequency}
+              interest={goal.interestRate ? { saved: progress.saved, rate: goal.interestRate } : undefined}
             />
           </Card>
         )}

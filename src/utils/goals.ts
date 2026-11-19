@@ -1,5 +1,6 @@
 import type { Contribution, IsoDate, SavingsGoal } from '@/types/models';
 import { savingMonthsLeft, todayIsoDate } from '@/utils/dates';
+import { monthlyNeededWithInterest } from '@/utils/interest';
 
 /**
  * Calculations for savings goals. All amounts are in minor units (pence).
@@ -61,7 +62,12 @@ export function monthlyAmountNeeded(
   const remaining = amountRemaining(goal, contributions);
   if (remaining === 0) return 0;
   const months = savingMonthsLeft(goal.targetDate, today);
-  return months <= 0 ? remaining : Math.ceil(remaining / months);
+  if (months <= 0) return remaining;
+  // With the bank's interest, what's already saved grows, so less is needed each month.
+  if (goal.interestRate) {
+    return monthlyNeededWithInterest(totalSaved(goal.id, contributions), goal.targetAmount, months, goal.interestRate);
+  }
+  return Math.ceil(remaining / months);
 }
 
 /** Goals in display order: in-progress goals first (oldest first), then completed ones. */

@@ -20,7 +20,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Project setup, bottom tab bar with 4 tabs (Home, Goals, Budget, Settings)
 - [x] Design polish: shared Screen/Card/Button components, type scale, radii, dark-mode navigation colours, animated progress bars and card fade-ins, accessibility labels
 - [x] Data model + local storage (Zustand + AsyncStorage) + goal helper functions
-- [x] Onboarding (first launch only): name → currency → pay → monthly income after tax → "About you" questions (each skippable)
+- [x] Onboarding (first launch only): name → currency → monthly income after tax; Home's "Complete your profile" card then offers the "About you" questions
 - [x] Settings: edit name, currency, monthly income; delete all data
 - [x] Goals: list with progress cards, empty state, create / edit / delete (with confirmation), detail screen
 - [x] Log savings: "Add money" modal (amount, date, note), history with delete, monthly plan, celebration (banner + confetti) at 100%
@@ -33,6 +33,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Personalisation ("About you"): saving focus, pay frequency + payday, emergency fund, budget style, guidance level, confetti. Asked in onboarding, editable in Settings, Home invites existing users to answer
 - [x] Sharing: web landing page for first-time visitors, "Try the demo" with sample data, feedback form (Home card after 5 days, Settings, landing), link preview image
 - [x] Repeating savings (logged automatically each month), data protection (persistent web storage, "add to home screen" card, monthly backup reminder, last backup in Settings)
+- [x] Interest rate per goal (from the user's own bank) in the monthly plan, "What if" planner and an "Interest (estimate)" card; shorter welcome flow
 
 Update this list as features land.
 
@@ -70,7 +71,7 @@ Update this list as features land.
 
 ## Personalisation ("About you")
 
-- `AppData.about` (`AboutYou` in `types/models.ts`) holds the answers. Every question is optional: `null` means skipped, and the app falls back to its general behaviour. `askedAt: null` (users from before this existed) shows Home's "Make Goalpot yours" card.
+- `AppData.about` (`AboutYou` in `types/models.ts`) holds the answers. Every question is optional: `null` means skipped, and the app falls back to its general behaviour. `askedAt: null` (new users after the short welcome flow, and users from before this existed) shows Home's "Complete your profile" card ("Not now" sets `askedAt`).
 - **Rule: only ask a question whose answer visibly changes something.** What each answer does (helpers in `utils/personal.ts`):
   - `focus` (what they're saving for): Home's empty state offers a pre-filled first goal (`goal-editor?name=&emoji=&target=`), tips tagged with that topic come first, and Home's subtitle says "You're £340 closer to your new home".
   - `paySchedule` (only when pay "varies"): usual paydays as set dates (`{ kind: 'dates', days }`, 29th–31st fall on a short month's last day) or a pattern (`{ kind: 'pattern', week: 1–4 or -1 for last, weekday }`, e.g. the last Friday). `null` = no set days. Drives the payday check-in (`paydaysInMonth`, `nthWeekdayOfMonth` in `utils/payday.ts`; with several dates the monthly suggestion is shared between them) and, for set dates, the reminder default (day after the first date). Patterns move around, so reminders can't follow them.
@@ -79,7 +80,7 @@ Update this list as features land.
   - `budgetStyle`: `budgetSplit(income, style)` and `BudgetSplitChart style` (50/30/20, 60/20/20, 70/20/10, in `BUDGET_STYLE_INFO`). The suggested monthly saving is the savings share.
   - `guidance`: 'brief' shows only the top 3 tips and no "Good to know" card; 'guided' or skipped shows both (`wantsGuidance`).
   - `celebrations`: confetti on goal completion (the banner always shows).
-- Questions live in `components/profile/about-questions.tsx` (`QUESTIONS` wording plus one component per question, built on `components/ui/option-list.tsx`). Onboarding shows one per step with "Skip this question", and `app/about-you.tsx` (modal, from Settings and Home) shows all of them and saves as they're tapped.
+- Questions live in `components/profile/about-questions.tsx` (`QUESTIONS` wording plus one component per question, built on `components/ui/option-list.tsx`). They're no longer in onboarding (kept to name, currency, income; `completeOnboarding(profile)` leaves `about` unasked): `app/about-you.tsx` (modal, from Home's card and Settings) shows all of them and saves as they're tapped.
 - Tips can have `topics` (`TipTopic`); `tipsFor(level, answers)` puts matching tips first. The answer-matched tips sit at the top of `data/tips.ts`.
 - `about` is in backups (`BackupData.about`, optional so older backups still import; then this device's answers are kept) and is reset by "Reset all data".
 
@@ -96,6 +97,7 @@ Update this list as features land.
 - **App lock** (`AppData.appLock`, phone only): `services/app-lock.ts` is the only file importing `expo-local-authentication` (web stub: `app-lock.web.ts`). `components/app-lock-gate.tsx` (root layout, after onboarding) shows a native `Modal` lock screen at launch and on returning from the background (not on `inactive`, which the Face ID prompt itself triggers). Turning the lock on or off asks for authentication first; with no passcode set up it explains instead.
 - **Repeating savings** (`SavingsGoal.repeating`, `utils/repeating.ts`, `app/repeating-saving.tsx?goalId=`): "£100 on the 1st of every month". `useRepeatingSavings` (via `RepeatingSaver`, root layout after onboarding) calls `logRepeatingSavings` at launch, when goals change, on foreground and hourly. `dueRepeatingSavings` turns every month's day after `loggedThrough` (up to today, at most 24) into a normal contribution with note "Repeating", capped so a goal never goes past its target; `loggedThrough` moves on even when nothing is logged, so deleted entries and reached goals don't backfill. New ones start from today (`newRepeatingSaving` sets `loggedThrough` to yesterday); "Skip next" moves `loggedThrough` onto the next date, so a `loggedThrough` after today means skipped payments (`skippedRepeatingDates`, shown as "Skipping …"); "Undo skip" (`undoSkipRepeating`) steps it back one payment, never earlier than yesterday. Days 29–31 use `dayInMonth` (short months → last day). The payday check-in skips goals that have one. Goals (and so `repeating`) are in backups; backup version unchanged because the field is optional.
 - **Data protection:** everything lives on the device, so: `services/web-app(.web).ts` asks the browser for persistent storage once onboarded (`requestPersistentStorage`; Safari otherwise clears site data after ~7 days without a visit unless installed) and has `isInstalledWebApp` / `installDevice`. Home's `InstallCard` (web, not installed, has a goal, until "Got it") explains and shows the device's steps. `BackupReminderCard` (all platforms) shows when `shouldRemindBackup` (30 days since the latest of `lastBackupAt`, `backupPromptSnoozedAt`, `startedAt`; needs savings; never in the demo). Exports go through `hooks/use-export-backup.ts`, which sets `lastBackupAt`; Settings shows "Last backup".
+- **Interest** (`SavingsGoal.interestRate`, hundredths of a percent: 4.25% → 425, max `MAX_INTEREST_RATE` 20%; `utils/interest.ts`): the yearly rate (AER) the user's own bank pays on that goal's money. Goalpot holds no money; it's only used for estimates, and the editor and goal page say so. Entered in the goal editor (`validateInterestRate`: blank or 0 = none; `TextField suffix`). `monthlyAmountNeeded` uses `monthlyNeededWithInterest` when set (so the monthly plan, reminders and Budget's per-goal amounts include it); `whatIf(…, interest)` uses `monthsToReach`. Model: monthly rate (1+AER)^(1/12)−1, payments at the start of each month (this month counts), growth at the end. The goal page shows "Interest (estimate)" (`interestEarned`, with `AdviceNote`) and, when unset, an "Earning interest on this? Add your rate" link. In backups as part of the goal.
 - Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`, `demo`, `startedAt`, `feedbackPromptDismissed`, `lastBackupAt`, `backupPromptSnoozedAt`, `installPromptDismissed`) are not in backups; withdrawals and `payWeekday` are.
 - Month numbers in `YearMonth` are 0–11 (JavaScript `Date`); `'YYYY-MM'` keys need `month + 1`.
 
@@ -136,7 +138,7 @@ src/
   app/                  Screens. Each file is a route (Expo Router).
     _layout.tsx         Root: theme, splash, Stack with onboarding guard
     +html.tsx           Web only: HTML shell with the PWA tags
-    onboarding.tsx      First-launch welcome flow (8 steps, question steps can be skipped);
+    onboarding.tsx      First-launch welcome flow (name, currency, income);
                         on web, first shows the landing page
     goal-editor.tsx     Modal: add a goal, or edit one with ?id=<goalId>
     add-money.tsx       Modal: log money saved, opened with ?goalId=<goalId>
@@ -226,6 +228,7 @@ src/
     year-review.ts      yearReview, goalReachedOn, reviewYearToShow
     feedback.ts         shouldAskForFeedback
     repeating.ts        dueRepeatingSavings, nextRepeatingPayment, skipNextRepeating
+    interest.ts         monthlyNeededWithInterest, monthsToReach, interestEarned, formatRate
     id.ts               createId
 assets/                 Images, icons, splash
 public/                 Copied to the web site root: manifest.json, PWA icons, og-image.png

@@ -47,6 +47,11 @@ export type SavingsGoal = {
   createdAt: IsoTimestamp;
   /** Saved automatically every month. Missing = none. */
   repeating?: RepeatingSaving;
+  /**
+   * Yearly interest rate the user's bank pays on this money, in hundredths of
+   * a percent (4.25% → 425). Used only for estimates. Missing = no interest.
+   */
+  interestRate?: number;
 };
 
 export type Contribution = {

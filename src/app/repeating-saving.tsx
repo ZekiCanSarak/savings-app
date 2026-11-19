@@ -65,7 +65,16 @@ export default function RepeatingSavingScreen() {
   const firstFrom =
     existing && existing.loggedThrough > addDays(today, -1) ? existing.loggedThrough : addDays(today, -1);
   const next = nextRepeatingDate(day, firstFrom);
-  const plan = typed && typed > 0 ? whatIf(progress.remaining, typed, goal.targetDate) : null;
+  const plan =
+    typed && typed > 0
+      ? whatIf(
+          progress.remaining,
+          typed,
+          goal.targetDate,
+          undefined,
+          goal.interestRate ? { saved: progress.saved, rate: goal.interestRate } : undefined,
+        )
+      : null;
 
   function handleSave() {
     if (!goal) return;

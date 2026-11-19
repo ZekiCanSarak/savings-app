@@ -21,10 +21,12 @@ import { formatMoney } from '@/utils/money';
 import {
   amountToInputText,
   GOAL_NAME_MAX_LENGTH,
+  interestRateToInputText,
   MONEY_INPUT_MAX_LENGTH,
   validateGoalName,
   validateGoalTarget,
   validateGoalTargetDate,
+  validateInterestRate,
 } from '@/utils/validation';
 
 function close() {
@@ -89,6 +91,8 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
   );
   const [targetDate, setTargetDate] = useState<IsoDate | null>(existing?.targetDate ?? null);
   const [emoji, setEmoji] = useState(existing?.emoji ?? suggested.emoji);
+  const [rateText, setRateText] = useState(interestRateToInputText(existing?.interestRate));
+  const [rateError, setRateError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -103,6 +107,7 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
 
   // Live hint: "That's about £68 a month" once there's a valid target and a future date.
   const targetPreview = validateGoalTarget(targetText);
+  const ratePreview = validateInterestRate(rateText);
   const monthlyPreview =
     targetPreview.ok && targetDate && !datePassed
       ? monthlyAmountNeeded(
@@ -113,6 +118,7 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
             targetAmount: targetPreview.value,
             targetDate,
             createdAt: existing?.createdAt ?? '',
+            ...(ratePreview.ok && ratePreview.value ? { interestRate: ratePreview.value } : {}),
           },
           contributions,
         )
@@ -127,13 +133,17 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
     setNameError(nameResult.ok ? null : nameResult.error);
     setTargetError(targetResult.ok ? null : targetResult.error);
     setDateError(dateResult.ok ? null : dateResult.error);
-    if (!nameResult.ok || !targetResult.ok || !dateResult.ok) return;
+    const rateResult = validateInterestRate(rateText);
+    setRateError(rateResult.ok ? null : rateResult.error);
+    if (!nameResult.ok || !targetResult.ok || !dateResult.ok || !rateResult.ok) return;
 
     const values = {
       name: nameResult.value,
       targetAmount: targetResult.value,
       targetDate: dateResult.value,
       emoji,
+      // undefined clears a rate that was removed (it isn't saved).
+      interestRate: rateResult.value ?? undefined,
     };
     if (existing) updateGoal(existing.id, values);
     else addGoal(values);
@@ -206,10 +216,32 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
                 <ThemedText type="small" themeColor="textSecondary">
                   That’s about{' '}
                   <ThemedText type="smallBold">{formatMoney(monthlyPreview, currency)}</ThemedText> a
-                  month to reach it by {formatMonthYear(targetDate)}.
+                  month to reach it by {formatMonthYear(targetDate)}
+                  {ratePreview.ok && ratePreview.value ? ', including interest' : ''}.
                 </ThemedText>
               </ThemedView>
             )}
+
+            <TextField
+              label="Interest rate (optional)"
+              value={rateText}
+              onChangeText={(text) => {
+                setRateText(text);
+                setRateError(null);
+              }}
+              error={rateError}
+              suffix="% a year"
+              placeholder="e.g. 4.5"
+              keyboardType="decimal-pad"
+              maxLength={8}
+              accessibilityHint="The yearly interest rate your bank pays on this money"
+            />
+            <ThemedText type="small" themeColor="textSecondary">
+              Keeping this money in a savings account that pays interest? Enter the yearly rate your
+              own bank pays on it (often shown as “AER” in your banking app). Goalpot doesn’t hold
+              or move any money: it only uses this rate to estimate how your pot grows, so your
+              monthly plan is more accurate. Leave it blank if this money doesn’t earn interest.
+            </ThemedText>
 
             <EmojiPicker value={emoji} onChange={setEmoji} />
           </ScrollView>

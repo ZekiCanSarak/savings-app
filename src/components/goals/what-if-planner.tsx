@@ -12,6 +12,8 @@ import { plannerStart, plannerStep, whatIf } from '@/utils/planner';
 
 type WhatIfPlannerProps = {
   remaining: number;
+  /** The bank's interest on this pot, if the user entered a rate. */
+  interest?: { saved: number; rate: number };
   monthlyNeeded: number | null;
   targetDate: IsoDate | null;
   currency: CurrencyCode;
@@ -21,6 +23,7 @@ type WhatIfPlannerProps = {
 /** "If I save £X a month, when do I get there?" with ‹ › to change the amount. */
 export function WhatIfPlanner({
   remaining,
+  interest,
   monthlyNeeded,
   targetDate,
   currency,
@@ -29,7 +32,7 @@ export function WhatIfPlanner({
   const step = plannerStep(remaining);
   const [monthly, setMonthly] = useState(() => plannerStart(remaining, monthlyNeeded));
   const money = (amount: number) => formatMoney(amount, currency);
-  const result = whatIf(remaining, monthly, targetDate);
+  const result = whatIf(remaining, monthly, targetDate, undefined, interest);
   const perPay = perPayPeriod(monthly, payFrequency);
   // Past the point where one payment finishes it, more makes no difference.
   const maxMonthly = Math.ceil(remaining / step) * step;

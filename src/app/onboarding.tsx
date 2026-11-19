@@ -2,14 +2,6 @@ import { useEffect, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import {
-  BudgetStyleQuestion,
-  EmergencyQuestion,
-  FocusQuestion,
-  GuidanceQuestion,
-  PayQuestion,
-  QUESTIONS,
-} from '@/components/profile/about-questions';
 import { LandingPage } from '@/components/landing/landing-page';
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
 import { CurrencyPicker } from '@/components/profile/currency-picker';
@@ -23,8 +15,7 @@ import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppActions, useIntroSeen } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
 import { isInstalledWebApp } from '@/services/web-app';
-import type { AboutYou, CurrencyCode } from '@/types/models';
-import { DEFAULT_ABOUT } from '@/utils/personal';
+import type { CurrencyCode } from '@/types/models';
 import {
   MONEY_INPUT_MAX_LENGTH,
   NAME_MAX_LENGTH,
@@ -32,32 +23,15 @@ import {
   validateName,
 } from '@/utils/validation';
 
-const STEPS = ['name', 'currency', 'pay', 'income', 'focus', 'emergency', 'budget', 'guidance'] as const;
+
+const STEPS = ['name', 'currency', 'income'] as const;
 type Step = (typeof STEPS)[number];
 const STEP_COUNT = STEPS.length;
 
-/** The "About you" steps can be skipped; skipping resets that answer. */
-const SKIPPED: Partial<Record<Step, Partial<AboutYou>>> = {
-  pay: { payFrequency: null, payday: null, payWeekday: null, paySchedule: null },
-  focus: { focus: null },
-  emergency: { emergencyFund: null },
-  budget: { budgetStyle: DEFAULT_ABOUT.budgetStyle },
-  guidance: { guidance: null },
-};
-
-/** Title and intro for the question steps. */
-const QUESTION_FOR: Partial<Record<Step, { title: string; intro: string }>> = {
-  pay: QUESTIONS.pay,
-  focus: QUESTIONS.focus,
-  emergency: QUESTIONS.emergency,
-  budget: QUESTIONS.budget,
-  guidance: QUESTIONS.guidance,
-};
-
 /**
  * Welcome flow shown the first time the app opens (see the guard in _layout.tsx).
- * Name → currency → pay → monthly income after tax, then the "About you"
- * questions that personalise the app. Every question step can be skipped.
+ * Kept short: name → currency → monthly income after tax. The "About you"
+ * questions come later, from Home's "Complete your profile" card or Settings.
  */
 export default function OnboardingScreen() {
   const theme = useTheme();
@@ -72,14 +46,9 @@ export default function OnboardingScreen() {
   const [incomeText, setIncomeText] = useState('');
   const [nameError, setNameError] = useState<string | null>(null);
   const [incomeError, setIncomeError] = useState<string | null>(null);
-  const [about, setAbout] = useState<AboutYou>(DEFAULT_ABOUT);
 
   const stepName: Step = STEPS[step];
-  const question = QUESTION_FOR[stepName];
-  const skipped = SKIPPED[stepName];
-  const irregularPay = about.payFrequency === 'irregular';
   const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? '';
-  const answer = (changes: Partial<AboutYou>) => setAbout((current) => ({ ...current, ...changes }));
 
   // Android back button goes to the previous step instead of closing the app.
   useEffect(() => {
@@ -91,7 +60,7 @@ export default function OnboardingScreen() {
     return () => subscription.remove();
   }, [step]);
 
-  function handleNext(skip?: Partial<AboutYou>) {
+  function handleNext() {
     if (stepName === 'name') {
       const result = validateName(name);
       if (!result.ok) return setNameError(result.error);
@@ -103,8 +72,6 @@ export default function OnboardingScreen() {
       if (!result.ok) return setIncomeError(result.error);
       setIncomeError(null);
     }
-    const answers = skip ? { ...about, ...skip } : about;
-    if (skip) setAbout(answers);
     if (step < STEP_COUNT - 1) {
       setStep(step + 1);
       return;
@@ -122,10 +89,7 @@ export default function OnboardingScreen() {
       setStep(STEPS.indexOf('income'));
       return;
     }
-    completeOnboarding(
-      { name: nameResult.value, currency, monthlyIncome: incomeResult.value },
-      answers,
-    );
+    completeOnboarding({ name: nameResult.value, currency, monthlyIncome: incomeResult.value });
   }
 
   if (showLanding) return <LandingPage onGetStarted={markIntroSeen} onTryDemo={startDemo} />;
@@ -199,13 +163,12 @@ export default function OnboardingScreen() {
               <>
                 <ThemedText type="title" accessibilityRole="header">Your monthly income</ThemedText>
                 <ThemedText themeColor="textSecondary">
-                  {irregularPay
-                    ? 'Roughly how much comes in each month, after tax? A rough average is fine. We use this to suggest how much you could save.'
-                    : 'How much do you take home each month, after tax? We use this to suggest how much you could save.'}{' '}
+                  How much do you take home each month, after tax? If it changes from month to
+                  month, a rough average is fine. We use this to suggest how much you could save.
                   No income right now? Enter 0. That’s fine.
                 </ThemedText>
                 <TextField
-                  label={irregularPay ? 'Average monthly income after tax' : 'Monthly income after tax'}
+                  label="Monthly income after tax"
                   value={incomeText}
                   onChangeText={(text) => {
                     setIncomeText(text);
@@ -223,66 +186,8 @@ export default function OnboardingScreen() {
                 <AfterTaxExplainer />
               </>
             )}
-
-            {question && (
-              <>
-                <ThemedText type="title" accessibilityRole="header">{question.title}</ThemedText>
-                <ThemedText themeColor="textSecondary">{question.intro}</ThemedText>
-              </>
-            )}
-
-            {stepName === 'pay' && (
-              <PayQuestion
-                frequency={about.payFrequency}
-                payday={about.payday}
-                payWeekday={about.payWeekday}
-                paySchedule={about.paySchedule}
-                onChangeFrequency={(payFrequency) => answer({ payFrequency })}
-                onChangePayday={(payday) => answer({ payday })}
-                onChangePayWeekday={(payWeekday) => answer({ payWeekday })}
-                onChangePaySchedule={(paySchedule) => answer({ paySchedule })}
-              />
-            )}
-            {stepName === 'focus' && (
-              <FocusQuestion value={about.focus} onChange={(focus) => answer({ focus })} />
-            )}
-            {stepName === 'emergency' && (
-              <EmergencyQuestion
-                value={about.emergencyFund}
-                onChange={(emergencyFund) => answer({ emergencyFund })}
-              />
-            )}
-            {stepName === 'budget' && (
-              <BudgetStyleQuestion
-                value={about.budgetStyle}
-                onChange={(budgetStyle) => answer({ budgetStyle })}
-              />
-            )}
-            {stepName === 'guidance' && (
-              <GuidanceQuestion
-                value={about.guidance}
-                onChange={(guidance) => answer({ guidance })}
-                celebrations={about.celebrations}
-                onChangeCelebrations={(celebrations) => answer({ celebrations })}
-              />
-            )}
-
-            {question && (
-              <ThemedText type="caption" themeColor="textSecondary">
-                Your answers stay on this device. Change them any time in Settings → About you.
-              </ThemedText>
-            )}
           </ScrollView>
 
-          {skipped && (
-            <View style={styles.skip}>
-              <TextButton
-                title="Skip this question"
-                accessibilityHint={step === STEP_COUNT - 1 ? 'Skips and finishes setting up' : 'Goes to the next step'}
-                onPress={() => handleNext(skipped)}
-              />
-            </View>
-          )}
           <View style={styles.footer}>
             {step > 0 && (
               <View style={styles.flex}>
@@ -328,9 +233,6 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-  },
-  skip: {
-    alignItems: 'center',
   },
   demo: {
     flexDirection: 'row',

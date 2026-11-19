@@ -11,9 +11,11 @@ type TextFieldProps = Omit<TextInputProps, 'style'> & {
   error?: string | null;
   /** Fixed text shown before the input, e.g. a currency symbol. */
   prefix?: string;
+  /** Shown after the text, e.g. '% a year'. */
+  suffix?: string;
 };
 
-export function TextField({ label, error, prefix, onFocus, onBlur, ...inputProps }: TextFieldProps) {
+export function TextField({ label, error, prefix, suffix, onFocus, onBlur, ...inputProps }: TextFieldProps) {
   const theme = useTheme();
   // The browser's own focus box is turned off (see src/app/+html.tsx), so the rounded
   // border turns green instead to show which field is active.
@@ -47,6 +49,11 @@ export function TextField({ label, error, prefix, onFocus, onBlur, ...inputProps
             onBlur?.(event);
           }}
         />
+        {suffix ? (
+          <ThemedText themeColor="textSecondary" style={styles.suffix}>
+            {suffix}
+          </ThemedText>
+        ) : null}
       </View>
       {error ? (
         <ThemedText type="small" themeColor="danger" accessibilityLiveRegion="polite">
@@ -69,6 +76,9 @@ const styles = StyleSheet.create({
     borderCurve: 'continuous',
     paddingHorizontal: Spacing.three,
     minHeight: 52,
+  },
+  suffix: {
+    marginLeft: Spacing.two,
   },
   prefix: {
     marginRight: Spacing.one,

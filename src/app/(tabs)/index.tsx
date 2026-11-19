@@ -99,8 +99,8 @@ export default function HomeScreen() {
       subtitle={subtitle}>
       {about.askedAt === null && (
         <Card
-          title="Make Goalpot yours ✨"
-          subtitle="Answer 5 quick questions so your budget, tips and reminders fit you. Every question is optional."
+          title="Complete your profile"
+          subtitle="Answer a few quick questions (about a minute) so your budget, tips, reminders and payday check-ins are more accurate for you. Every question is optional, and you can change your answers any time in Settings."
           index={0}>
           <View style={styles.buttonRow}>
             <View style={styles.flex}>
@@ -112,7 +112,7 @@ export default function HomeScreen() {
               />
             </View>
             <View style={styles.flex}>
-              <Button title="Let’s go" onPress={() => router.push('/about-you')} />
+              <Button title="Answer now" onPress={() => router.push('/about-you')} />
             </View>
           </View>
         </Card>

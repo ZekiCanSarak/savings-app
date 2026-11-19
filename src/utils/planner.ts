@@ -1,4 +1,5 @@
 import type { IsoDate } from '@/types/models';
+import { monthsToReach } from '@/utils/interest';
 import { addMonths, compareYearMonth, endOfMonthIsoDate, todayIsoDate, yearMonthOf } from '@/utils/dates';
 
 /**
@@ -23,9 +24,14 @@ export function whatIf(
   monthly: number,
   targetDate: IsoDate | null,
   today: IsoDate = todayIsoDate(),
+  /** The pot's interest (from the user's bank), so what's saved grows too. */
+  interest?: { saved: number; rate: number },
 ): WhatIfResult | null {
   if (remaining <= 0 || monthly <= 0) return null;
-  const months = Math.ceil(remaining / monthly);
+  const months = interest?.rate
+    ? monthsToReach(interest.saved, interest.saved + remaining, monthly, interest.rate)
+    : Math.ceil(remaining / monthly);
+  if (months === null) return null;
   const finish = addMonths(yearMonthOf(today), months - 1);
   let monthsEarly: number | null = null;
   if (targetDate) {
