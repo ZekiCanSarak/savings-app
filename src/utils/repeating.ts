@@ -110,3 +110,40 @@ export function dueRepeatingSavings(
   }
   return due;
 }
+
+/** The latest day a repeating saving went in before `before` (the 29th–31st clamp to short months). */
+function previousRepeatingDate(dayOfMonth: number, before: IsoDate): IsoDate {
+  const start = yearMonthOf(before);
+  for (let i = 0; i < 2; i++) {
+    const { year, month } = addMonths(start, -i);
+    const date = dayInMonth(year, month, dayOfMonth);
+    if (date < before) return date;
+  }
+  const { year, month } = addMonths(start, -2);
+  return dayInMonth(year, month, dayOfMonth);
+}
+
+/** Upcoming payments that "Skip next" has skipped, earliest first (empty when none). */
+export function skippedRepeatingDates(repeating: RepeatingSaving, today: IsoDate = todayIsoDate()): IsoDate[] {
+  const dates: IsoDate[] = [];
+  let cursor = today;
+  // A skip moves loggedThrough onto a future payment day; each such day is skipped.
+  while (dates.length < MAX_CATCH_UP) {
+    const date = nextRepeatingDate(repeating.dayOfMonth, cursor);
+    if (date > repeating.loggedThrough) break;
+    dates.push(date);
+    cursor = date;
+  }
+  return dates;
+}
+
+/**
+ * Undoes the latest skip: the last skipped payment goes in again. Never earlier
+ * than yesterday, so undoing can't log months that have already passed.
+ */
+export function undoSkipRepeating(repeating: RepeatingSaving, today: IsoDate = todayIsoDate()): RepeatingSaving {
+  if (repeating.loggedThrough <= today) return repeating;
+  const previous = previousRepeatingDate(repeating.dayOfMonth, repeating.loggedThrough);
+  const yesterday = addDays(today, -1);
+  return { ...repeating, loggedThrough: previous > yesterday ? previous : yesterday };
+}

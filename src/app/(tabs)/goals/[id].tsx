@@ -36,7 +36,12 @@ import {
 import { formatMoney } from '@/utils/money';
 import { perPayPeriod } from '@/utils/personal';
 import { ordinal } from '@/utils/reminders';
-import { nextRepeatingPayment, skipNextRepeating } from '@/utils/repeating';
+import {
+  nextRepeatingPayment,
+  skipNextRepeating,
+  skippedRepeatingDates,
+  undoSkipRepeating,
+} from '@/utils/repeating';
 
 /** Leaves this screen; falls back to the list if there's nothing to go back to (e.g. web refresh). */
 function goBackToList() {
@@ -221,6 +226,7 @@ export default function GoalDetailScreen() {
           <Card title="Repeating saving" index={1}>
             {(() => {
               const next = nextRepeatingPayment(goal, contributions);
+              const skipped = skippedRepeatingDates(goal.repeating);
               return (
                 <View style={styles.repeating} accessible>
                   <ThemedText>
@@ -232,6 +238,11 @@ export default function GoalDetailScreen() {
                       ? `Next one: ${formatRelativeDay(next)}`
                       : 'Paused: this goal is reached. It starts again if you raise the target.'}
                   </ThemedText>
+                  {next && skipped.length > 0 && (
+                    <ThemedText type="small" themeColor="textSecondary">
+                      Skipping {skipped.map((d) => formatDate(d)).join(' and ')}.
+                    </ThemedText>
+                  )}
                 </View>
               );
             })()}
@@ -259,6 +270,16 @@ export default function GoalDetailScreen() {
                 </View>
               )}
             </View>
+            {!complete && skippedRepeatingDates(goal.repeating).length > 0 && (
+              <Button
+                title="Undo skip"
+                variant="secondary"
+                accessibilityHint="The last skipped payment will be logged after all"
+                onPress={() => {
+                  if (goal.repeating) setRepeatingSaving(goal.id, undoSkipRepeating(goal.repeating));
+                }}
+              />
+            )}
           </Card>
         ) : (
           !complete && (
