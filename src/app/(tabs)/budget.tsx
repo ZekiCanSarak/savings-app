@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { AdviceNote } from '@/components/budget/advice-note';
 import { BudgetSplitChart } from '@/components/budget/budget-split-chart';
@@ -242,7 +242,7 @@ function BudgetContent({
       )}
 
       {/* On web the long tips list starts folded away, so the budget itself stays in view. */}
-      <TipsSection tips={tips} index={3} collapsible={Platform.OS === 'web'} />
+      <TipsSection tips={tips} index={3} />
     </>
   );
 }

@@ -12,32 +12,25 @@ type TipsSectionProps = {
   tips: Tip[];
   /** Position on the screen, for the card's staggered fade-in. */
   index?: number;
-  /** Starts closed, and the whole header opens and closes it. Used on web. */
-  collapsible?: boolean;
 };
 
-/** The Budget tab's "Tips for you" card. */
-export function TipsSection({ tips, index, collapsible = false }: TipsSectionProps) {
-  const [open, setOpen] = useState(!collapsible);
+/**
+ * The Budget tab's "Tips for you" card. It starts closed so the list of tips
+ * doesn't push everything else down; the whole header opens and closes it.
+ */
+export function TipsSection({ tips, index }: TipsSectionProps) {
+  const [open, setOpen] = useState(false);
   const subtitle = `${tips.length} ideas to help you save`;
 
   const list = (
     <Animated.View
-      entering={collapsible ? FadeIn.duration(200).reduceMotion(ReduceMotion.System) : undefined}
+      entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
       style={styles.tips}>
       {tips.map((tip) => (
         <TipCard key={tip.id} tip={tip} />
       ))}
     </Animated.View>
   );
-
-  if (!collapsible) {
-    return (
-      <Card title="Tips for you" subtitle={subtitle} index={index}>
-        {list}
-      </Card>
-    );
-  }
 
   return (
     <Card index={index}>
