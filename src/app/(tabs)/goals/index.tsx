@@ -10,7 +10,10 @@ import { Screen } from '@/components/ui/screen';
 import { MinTapSize, Spacing } from '@/constants/theme';
 import { useContributions, useCurrency, useGoals } from '@/hooks/use-app-data';
 import type { SavingsGoal } from '@/types/models';
+import type { ReactNode } from 'react';
+
 import {
+  activeGoals,
   amountRemaining,
   isGoalComplete,
   percentComplete,
@@ -27,10 +30,15 @@ export default function GoalsScreen() {
   const contributions = useContributions();
   const currency = useCurrency();
   const [showReached, setShowReached] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
-  const sortedGoals = sortGoalsForDisplay(goals, contributions);
+  const sortedGoals = sortGoalsForDisplay(activeGoals(goals), contributions);
   const active = sortedGoals.filter((g) => !isGoalComplete(g, contributions));
   const reached = sortedGoals.filter((g) => isGoalComplete(g, contributions));
+  const archived = sortGoalsForDisplay(
+    goals.filter((g) => g.archivedAt),
+    contributions,
+  );
 
   const card = (goal: SavingsGoal, index: number) => (
     <GoalCard
@@ -50,7 +58,9 @@ export default function GoalsScreen() {
       title="Goals"
       subtitle={
         goals.length > 0
-          ? `${active.length} in progress${reached.length > 0 ? ` · ${reached.length} reached` : ''}`
+          ? `${active.length} in progress${reached.length > 0 ? ` · ${reached.length} reached` : ''}${
+              archived.length > 0 ? ` · ${archived.length} archived` : ''
+            }`
           : undefined
       }
       headerRight={
@@ -73,9 +83,14 @@ export default function GoalsScreen() {
         />
       ) : (
         <>
-          {active.length === 0 && (
+          {active.length === 0 && reached.length > 0 && (
             <ThemedText themeColor="textSecondary">
               Every goal is reached. Brilliant! Add a new one whenever you’re ready.
+            </ThemedText>
+          )}
+          {active.length === 0 && reached.length === 0 && (
+            <ThemedText themeColor="textSecondary">
+              All your goals are archived. Add a new one whenever you’re ready.
             </ThemedText>
           )}
           {active.map(card)}
@@ -89,29 +104,63 @@ export default function GoalsScreen() {
             />
           )}
 
+          {/* Finished goals are kept out of the way, like a trophy shelf. */}
           {reached.length > 0 && (
-            <View style={styles.shelf}>
-              {/* Finished goals are kept out of the way, like a trophy shelf. */}
-              <Pressable
-                onPress={() => setShowReached((value) => !value)}
-                accessibilityRole="button"
-                aria-expanded={showReached}
-                accessibilityLabel={`Reached goals, ${reached.length}`}
-                accessibilityHint={showReached ? 'Hides your reached goals' : 'Shows your reached goals'}
-                style={({ pressed }) => [styles.shelfHeader, pressed && styles.pressed]}>
-                <ThemedText type="heading" style={styles.flex}>
-                  Reached 🎉 ({reached.length})
-                </ThemedText>
-                <ThemedText type="smallBold" themeColor="tint" importantForAccessibility="no">
-                  {showReached ? 'Hide ▲' : 'Show ▼'}
-                </ThemedText>
-              </Pressable>
-              {showReached && reached.map((goal, i) => card(goal, active.length + i))}
-            </View>
+            <Shelf
+              title={`Reached 🎉 (${reached.length})`}
+              label={`Reached goals, ${reached.length}`}
+              what="reached goals"
+              open={showReached}
+              onToggle={() => setShowReached((value) => !value)}>
+              {reached.map((goal, i) => card(goal, active.length + i))}
+            </Shelf>
+          )}
+          {archived.length > 0 && (
+            <Shelf
+              title={`Archived (${archived.length})`}
+              label={`Archived goals, ${archived.length}`}
+              what="archived goals"
+              open={showArchived}
+              onToggle={() => setShowArchived((value) => !value)}>
+              {archived.map((goal, i) => card(goal, active.length + reached.length + i))}
+            </Shelf>
           )}
         </>
       )}
     </Screen>
+  );
+}
+
+type ShelfProps = {
+  title: string;
+  label: string;
+  /** For the hint: "Shows your archived goals". */
+  what: string;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+};
+
+/** A collapsible section of the goals list, closed to start with. */
+function Shelf({ title, label, what, open, onToggle, children }: ShelfProps) {
+  return (
+    <View style={styles.shelf}>
+      <Pressable
+        onPress={onToggle}
+        accessibilityRole="button"
+        aria-expanded={open}
+        accessibilityLabel={label}
+        accessibilityHint={open ? `Hides your ${what}` : `Shows your ${what}`}
+        style={({ pressed }) => [styles.shelfHeader, pressed && styles.pressed]}>
+        <ThemedText type="heading" style={styles.flex}>
+          {title}
+        </ThemedText>
+        <ThemedText type="smallBold" themeColor="tint" importantForAccessibility="no">
+          {open ? 'Hide ▲' : 'Show ▼'}
+        </ThemedText>
+      </Pressable>
+      {open && children}
+    </View>
   );
 }
 

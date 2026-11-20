@@ -79,3 +79,8 @@ export function sortGoalsForDisplay(goals: SavingsGoal[], contributions: Contrib
     return a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0;
   });
 }
+
+/** Goals that aren't archived: the ones lists, totals, reminders and check-ins are about. */
+export function activeGoals(goals: SavingsGoal[]): SavingsGoal[] {
+  return goals.filter((g) => !g.archivedAt);
+}

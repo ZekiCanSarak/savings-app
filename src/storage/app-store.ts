@@ -45,7 +45,7 @@ const noopStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 7;
+const STORAGE_VERSION = 8;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -65,6 +65,9 @@ type AppActions = {
   updateGoal: (id: string, changes: Partial<NewGoal>) => void;
   /** Also deletes the goal's contributions. */
   deleteGoal: (id: string) => void;
+  /** Puts a goal away (see `SavingsGoal.archivedAt`); `restoreGoal` brings it back. */
+  archiveGoal: (id: string) => void;
+  restoreGoal: (id: string) => void;
 
   /** Returns the new contribution's id. */
   addContribution: (contribution: NewContribution) => string;
@@ -175,6 +178,18 @@ export const useAppStore = create<AppState>()(
       },
       updateGoal: (id, changes) =>
         set((s) => ({ goals: s.goals.map((g) => (g.id === id ? { ...g, ...changes } : g)) })),
+      archiveGoal: (id) =>
+        set((s) => ({
+          goals: s.goals.map((g) => (g.id === id ? { ...g, archivedAt: nowIsoTimestamp() } : g)),
+        })),
+      restoreGoal: (id) =>
+        set((s) => ({
+          goals: s.goals.map((g) => {
+            if (g.id !== id) return g;
+            const { archivedAt: _archived, ...rest } = g;
+            return rest;
+          }),
+        })),
       deleteGoal: (id) =>
         set((s) => ({
           goals: s.goals.filter((g) => g.id !== id),
@@ -304,7 +319,7 @@ export const useAppStore = create<AppState>()(
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
         // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed;
         // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed;
-        // v6 → v7 added goal.interestRate.
+        // v6 → v7 added goal.interestRate; v7 → v8 added goal.archivedAt.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         const data = persisted as AppData;

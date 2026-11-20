@@ -11,10 +11,19 @@ import { ModalHeader } from '@/components/ui/modal-header';
 import { TextField } from '@/components/ui/text-field';
 import { CURRENCIES } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
-import { useAppActions, useCurrency, useGoal, useGoalProgress } from '@/hooks/use-app-data';
+import {
+  useAppActions,
+  useContribution,
+  useContributions,
+  useCurrency,
+  useGoal,
+  useGoalProgress,
+} from '@/hooks/use-app-data';
 import { addDays, todayIsoDate } from '@/utils/dates';
+import { totalSaved } from '@/utils/goals';
 import { formatMoney, parseMoneyInput } from '@/utils/money';
 import {
+  amountToInputText,
   MONEY_INPUT_MAX_LENGTH,
   NOTE_MAX_LENGTH,
   validateContributionAmount,
@@ -34,28 +43,38 @@ function close() {
 /**
  * Log money saved toward a goal, opened with `?goalId=<id>` from the goal
  * detail screen. With `&mode=withdraw` it logs money taken out instead (never
- * more than the goal holds). Presented as a modal (see src/app/_layout.tsx).
+ * more than the goal holds). With `&contributionId=<id>` it edits that entry
+ * (amount, date and note; saved or taken out stays as it was).
+ * Presented as a modal (see src/app/_layout.tsx).
  */
 export default function AddMoneyScreen() {
-  const { goalId, mode } = useLocalSearchParams<{ goalId: string; mode?: string }>();
-  const withdrawing = mode === 'withdraw';
+  const { goalId, mode, contributionId } = useLocalSearchParams<{
+    goalId: string;
+    mode?: string;
+    contributionId?: string;
+  }>();
+  const editing = useContribution(contributionId ?? '');
+  const contributions = useContributions();
+  const withdrawing = editing ? editing.withdrawal === true : mode === 'withdraw';
   const goal = useGoal(goalId ?? '');
   const progress = useGoalProgress(goalId ?? '');
   const currency = useCurrency();
-  const { addContribution } = useAppActions();
+  const { addContribution, updateContribution } = useAppActions();
 
   const today = todayIsoDate();
-  const [amountText, setAmountText] = useState('');
-  const [date, setDate] = useState(today);
-  const [noteText, setNoteText] = useState('');
+  const [amountText, setAmountText] = useState(() => amountToInputText(editing?.amount ?? null));
+  const [date, setDate] = useState(editing?.date ?? today);
+  const [noteText, setNoteText] = useState(editing?.note ?? '');
   const [amountError, setAmountError] = useState<string | null>(null);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
 
-  if (!goal || !progress) {
+  if (!goal || !progress || (contributionId && !editing)) {
     return (
       <ThemedView style={[styles.container, styles.notFound]}>
-        <ThemedText themeColor="textSecondary">This goal doesn’t exist any more.</ThemedText>
+        <ThemedText themeColor="textSecondary">
+          {goal ? 'This entry doesn’t exist any more.' : 'This goal doesn’t exist any more.'}
+        </ThemedText>
         <Button title="Close" variant="secondary" onPress={close} />
       </ThemedView>
     );
@@ -63,13 +82,18 @@ export default function AddMoneyScreen() {
 
   const currencySymbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? '';
   const typedAmount = parseMoneyInput(amountText);
+  // When editing, work from the goal's total without this entry.
+  const saved = editing
+    ? totalSaved(goal.id, contributions.filter((c) => c.id !== editing.id))
+    : progress.saved;
+  const remaining = Math.max(0, goal.targetAmount - saved);
   const willComplete =
-    !withdrawing && progress.remaining > 0 && typedAmount !== null && typedAmount >= progress.remaining;
+    !withdrawing && remaining > 0 && typedAmount !== null && typedAmount >= remaining;
 
   function handleSave() {
     if (!goal || !progress) return;
     const amountResult = withdrawing
-      ? validateWithdrawalAmount(amountText, progress.saved, formatMoney(progress.saved, currency))
+      ? validateWithdrawalAmount(amountText, saved, formatMoney(saved, currency))
       : validateContributionAmount(amountText);
     const noteResult = validateNote(noteText);
     const dateResult = validateContributionDate(date);
@@ -78,20 +102,39 @@ export default function AddMoneyScreen() {
     setDateError(dateResult.ok ? null : dateResult.error);
     if (!amountResult.ok || !noteResult.ok || !dateResult.ok) return;
 
-    addContribution({
-      goalId: goal.id,
-      amount: amountResult.value,
-      date: dateResult.value,
-      ...(withdrawing ? { withdrawal: true as const } : {}),
-      ...(noteResult.value ? { note: noteResult.value } : {}),
-    });
+    if (editing) {
+      updateContribution(editing.id, {
+        amount: amountResult.value,
+        date: dateResult.value,
+        note: noteResult.value,
+      });
+    } else {
+      addContribution({
+        goalId: goal.id,
+        amount: amountResult.value,
+        date: dateResult.value,
+        ...(withdrawing ? { withdrawal: true as const } : {}),
+        ...(noteResult.value ? { note: noteResult.value } : {}),
+      });
+    }
     close();
   }
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ModalHeader title={withdrawing ? 'Take money out' : 'Add money'} onClose={close} />
+        <ModalHeader
+          title={
+            editing
+              ? withdrawing
+                ? 'Edit money taken out'
+                : 'Edit saving'
+              : withdrawing
+                ? 'Take money out'
+                : 'Add money'
+          }
+          onClose={close}
+        />
 
         <KeyboardAvoidingView
           style={styles.flex}
@@ -106,9 +149,9 @@ export default function AddMoneyScreen() {
               </ThemedText>
               <ThemedText type="small" themeColor="textSecondary" style={styles.center}>
                 {withdrawing
-                  ? `${formatMoney(progress.saved, currency)} in this goal`
-                  : progress.remaining > 0
-                    ? `${formatMoney(progress.remaining, currency)} left to save`
+                  ? `${formatMoney(saved, currency)} in this goal`
+                  : remaining > 0
+                    ? `${formatMoney(remaining, currency)} left to save`
                     : 'Goal already reached. Extra savings are welcome!'}
               </ThemedText>
             </View>
@@ -125,7 +168,7 @@ export default function AddMoneyScreen() {
               placeholder="e.g. 50"
               keyboardType="decimal-pad"
               maxLength={MONEY_INPUT_MAX_LENGTH}
-              autoFocus
+              autoFocus={!editing}
             />
             {willComplete && (
               <ThemedText type="small" themeColor="tint">
@@ -165,7 +208,7 @@ export default function AddMoneyScreen() {
           </ScrollView>
 
           <View style={styles.footer}>
-            <Button title="Save" onPress={handleSave} />
+            <Button title={editing ? 'Save changes' : 'Save'} onPress={handleSave} />
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>

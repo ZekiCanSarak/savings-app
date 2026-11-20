@@ -18,7 +18,7 @@ import {
 } from '@/hooks/use-app-data';
 import { budgetSplit } from '@/utils/budget';
 import { relativeDayInSentence, todayIsoDate } from '@/utils/dates';
-import { amountRemaining } from '@/utils/goals';
+import { activeGoals, amountRemaining } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
 import { paydaysPerMonth, paydayToCheckIn } from '@/utils/payday';
 import { perPayPeriod } from '@/utils/personal';
@@ -36,7 +36,7 @@ type PaydayCheckInProps = {
 export function PaydayCheckIn({ index }: PaydayCheckInProps) {
   const about = useAbout();
   const profile = useProfile();
-  const goals = useGoals();
+  const goals = activeGoals(useGoals());
   const contributions = useContributions();
   const currency = useCurrency();
   const answeredFor = usePaydayCheckIn();

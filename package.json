@@ -36,9 +36,13 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@types/jest": "30.0.0",
     "@types/react": "~19.3.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~58.0.4",
+    "jest": "~30.5.2",
+    "jest-expo": "~58.0.15",
+    "puppeteer-core": "^24.10.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -49,7 +53,19 @@
     "build:web": "expo export -p web",
     "preview:web": "expo export -p web && expo serve",
     "deploy:web": "expo export -p web && npx eas-cli@latest deploy --prod",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test": "jest",
+    "test:e2e": "expo export -p web && node e2e/run-all.js"
   },
-  "private": true
+  "private": true,
+  "jest": {
+    "preset": "jest-expo",
+    "testMatch": [
+      "<rootDir>/src/**/*.test.ts"
+    ],
+    "moduleNameMapper": {
+      "^@/assets/(.*)$": "<rootDir>/assets/$1",
+      "^@/(.*)$": "<rootDir>/src/$1"
+    }
+  }
 }

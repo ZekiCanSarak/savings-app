@@ -77,6 +77,9 @@ export function sanitizeGoals(value: unknown): SavingsGoal[] {
             ? g.createdAt
             : new Date().toISOString(),
         ...sanitizeRepeating(g.repeating),
+        ...(typeof g.archivedAt === 'string' && !Number.isNaN(Date.parse(g.archivedAt))
+          ? { archivedAt: g.archivedAt }
+          : {}),
         ...(isPositiveWhole(g.interestRate) && g.interestRate <= MAX_INTEREST_RATE
           ? { interestRate: g.interestRate }
           : {}),

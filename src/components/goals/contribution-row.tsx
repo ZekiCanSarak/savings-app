@@ -10,11 +10,12 @@ import { formatMoney } from '@/utils/money';
 type ContributionRowProps = {
   contribution: Contribution;
   currency: CurrencyCode;
+  onEdit: () => void;
   onDelete: () => void;
 };
 
-/** One line in a goal's savings history, with a delete button. Money taken out shows as −£50. */
-export function ContributionRow({ contribution, currency, onDelete }: ContributionRowProps) {
+/** One line in a goal's savings history, with Edit and Delete buttons. Money taken out shows as −£50. */
+export function ContributionRow({ contribution, currency, onEdit, onDelete }: ContributionRowProps) {
   const theme = useTheme();
   const amount = formatMoney(contribution.amount, currency);
   const day = formatRelativeDay(contribution.date);
@@ -33,11 +34,25 @@ export function ContributionRow({ contribution, currency, onDelete }: Contributi
       </View>
       <Pressable
         accessibilityRole="button"
+        accessibilityLabel={`Edit ${amount} ${out ? 'taken out' : 'saved'} ${day}`}
+        onPress={onEdit}
+        hitSlop={6}
+        style={({ pressed }) => [
+          styles.rowButton,
+          { borderColor: theme.border },
+          pressed && styles.pressed,
+        ]}>
+        <ThemedText type="small" themeColor="tint">
+          Edit
+        </ThemedText>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
         accessibilityLabel={`Delete ${amount} ${out ? 'taken out' : 'saved'} ${day}`}
         onPress={onDelete}
         hitSlop={6}
         style={({ pressed }) => [
-          styles.deleteButton,
+          styles.rowButton,
           { borderColor: theme.border },
           pressed && styles.pressed,
         ]}>
@@ -53,13 +68,13 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two,
     minHeight: 48,
   },
   details: {
     flex: 1,
   },
-  deleteButton: {
+  rowButton: {
     minHeight: MinTapSize,
     paddingHorizontal: Spacing.three,
     borderRadius: Radius.small,

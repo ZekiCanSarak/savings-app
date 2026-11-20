@@ -33,7 +33,7 @@ import { notificationsSupported } from '@/services/notifications';
 import { budgetSplit, incomeLevel, tipOfTheDay } from '@/utils/budget';
 import { summariseGoals } from '@/utils/charts';
 import { nowIsoTimestamp } from '@/utils/dates';
-import { amountRemaining } from '@/utils/goals';
+import { activeGoals, amountRemaining } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
 import {
   emergencyFundTarget,
@@ -51,7 +51,7 @@ function greeting(hour = new Date().getHours()): string {
 
 export default function HomeScreen() {
   const profile = useProfile();
-  const goals = useGoals();
+  const goals = activeGoals(useGoals());
   const contributions = useContributions();
   const currency = useCurrency();
   const reminderSettings = useReminderSettings();

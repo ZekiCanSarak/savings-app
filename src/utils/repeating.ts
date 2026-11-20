@@ -65,7 +65,7 @@ export function nextRepeatingPayment(
   contributions: Contribution[],
   today: IsoDate = todayIsoDate(),
 ): IsoDate | null {
-  if (!goal.repeating) return null;
+  if (!goal.repeating || goal.archivedAt) return null;
   if (totalSaved(goal.id, contributions) >= goal.targetAmount) return null;
   const from = goal.repeating.loggedThrough > addDays(today, -1) ? goal.repeating.loggedThrough : addDays(today, -1);
   return nextRepeatingDate(goal.repeating.dayOfMonth, from);
@@ -93,7 +93,8 @@ export function dueRepeatingSavings(
   for (const goal of goals) {
     const repeating = goal.repeating;
     if (!repeating) continue;
-    let remaining = goal.targetAmount - totalSaved(goal.id, contributions);
+    // Archived goals skip their payments, like reached ones, so restoring doesn't backfill.
+    let remaining = goal.archivedAt ? 0 : goal.targetAmount - totalSaved(goal.id, contributions);
     let cursor = repeating.loggedThrough;
     for (let i = 0; i < MAX_CATCH_UP; i++) {
       const date = nextRepeatingDate(repeating.dayOfMonth, cursor);

@@ -97,6 +97,10 @@ export function useContributions() {
   return useAppStore((s) => s.contributions);
 }
 
+export function useContribution(id: string) {
+  return useAppStore((s) => s.contributions.find((c) => c.id === id));
+}
+
 /** Contributions for one goal, newest first. */
 export function useGoalContributions(goalId: string) {
   const contributions = useContributions();
@@ -126,6 +130,8 @@ export function useAppActions() {
       addGoal: s.addGoal,
       updateGoal: s.updateGoal,
       deleteGoal: s.deleteGoal,
+      archiveGoal: s.archiveGoal,
+      restoreGoal: s.restoreGoal,
       addContribution: s.addContribution,
       addContributions: s.addContributions,
       updateContribution: s.updateContribution,

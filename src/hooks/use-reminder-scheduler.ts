@@ -10,6 +10,7 @@ import {
   onReminderTapped,
   scheduleReminder,
 } from '@/services/notifications';
+import { activeGoals } from '@/utils/goals';
 import { notificationMessage } from '@/utils/reminders';
 
 /** Wait this long after the last change before rescheduling, so bursts of edits only reschedule once. */
@@ -48,7 +49,7 @@ export function useReminderScheduler() {
           await cancelReminder();
           return;
         }
-        await scheduleReminder(settings, notificationMessage(goals, contributions, currency));
+        await scheduleReminder(settings, notificationMessage(activeGoals(goals), contributions, currency));
       } catch (error) {
         console.warn('Could not schedule reminder', error);
       }

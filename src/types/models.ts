@@ -52,6 +52,11 @@ export type SavingsGoal = {
    * a percent (4.25% → 425). Used only for estimates. Missing = no interest.
    */
   interestRate?: number;
+  /**
+   * When the goal was archived: hidden from lists, totals, reminders and
+   * check-ins, while its savings still count in streaks and the year in review.
+   */
+  archivedAt?: IsoTimestamp;
 };
 
 export type Contribution = {

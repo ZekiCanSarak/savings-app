@@ -71,7 +71,8 @@ export default function GoalDetailScreen() {
   const history = useGoalContributions(id);
   const contributions = useContributions();
   const currency = useCurrency();
-  const { deleteGoal, deleteContribution, setRepeatingSaving } = useAppActions();
+  const { deleteGoal, deleteContribution, setRepeatingSaving, archiveGoal, restoreGoal } =
+    useAppActions();
   const reduceMotion = useReducedMotion();
   const about = useAbout();
   const theme = useTheme();
@@ -99,10 +100,14 @@ export default function GoalDetailScreen() {
   }
 
   const money = (amount: number) => formatMoney(amount, currency);
-  const complete = progress.remaining === 0;
+  const archived = Boolean(goal.archivedAt);
+  // An archived goal shows its progress and history, but no plans or actions.
+  const complete = progress.remaining === 0 || archived;
   // People paid weekly or every 4 weeks also see the monthly plan per payday.
   const perPay =
-    progress.monthlyNeeded !== null ? perPayPeriod(progress.monthlyNeeded, about.payFrequency) : null;
+    progress.monthlyNeeded !== null
+      ? perPayPeriod(progress.monthlyNeeded, about.payFrequency)
+      : null;
 
   function confirmDeleteGoal() {
     if (!goal) return;
@@ -137,9 +142,7 @@ export default function GoalDetailScreen() {
     <ThemedView style={styles.container}>
       {/* The big name below is the page title, so the bar just shows the back button. */}
       <Stack.Screen options={{ title: '' }} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={styles.content}>
+      <ScrollView contentInsetAdjustmentBehavior="automatic" contentContainerStyle={styles.content}>
         {celebrating && (
           <GoalCelebration
             goalName={goal.name}
@@ -150,7 +153,10 @@ export default function GoalDetailScreen() {
 
         <View style={styles.hero}>
           <View style={[styles.heroEmoji, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText type="emojiLarge" importantForAccessibility="no" accessibilityElementsHidden>
+            <ThemedText
+              type="emojiLarge"
+              importantForAccessibility="no"
+              accessibilityElementsHidden>
               {goal.emoji}
             </ThemedText>
           </View>
@@ -165,6 +171,19 @@ export default function GoalDetailScreen() {
             </View>
           ) : null}
         </View>
+
+        {archived && (
+          <Card
+            title="Archived"
+            subtitle="This goal is put away: it’s not in your goals list, totals, reminders or check-ins, and any repeating saving is paused. Its savings still count in your streaks and year in review."
+            index={0}>
+            <Button
+              title="Restore goal"
+              accessibilityHint="Brings this goal back to your goals list"
+              onPress={() => restoreGoal(goal.id)}
+            />
+          </Card>
+        )}
 
         <Card index={0}>
           <View
@@ -185,23 +204,28 @@ export default function GoalDetailScreen() {
             </ThemedText>
           </View>
           <ProgressBar percent={progress.percent} height={12} accessibilityLabel="Goal progress" />
-          <ThemedText themeColor={complete ? 'tint' : 'textSecondary'}>
-            {complete
+          <ThemedText themeColor={progress.remaining === 0 ? 'tint' : 'textSecondary'}>
+            {progress.remaining === 0
               ? 'You’ve reached this goal. Well done! 🎉'
               : `You have ${money(progress.remaining)} left to save.`}
           </ThemedText>
-          <Button
-            title="+ Add money"
-            accessibilityHint="Opens a form to log money you’ve saved"
-            onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
-          />
-          {progress.saved > 0 && (
+          {!archived && (
+            <Button
+              title="+ Add money"
+              accessibilityHint="Opens a form to log money you’ve saved"
+              onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
+            />
+          )}
+          {!archived && progress.saved > 0 && (
             <Button
               title="Take money out"
               variant="secondary"
               accessibilityHint="Opens a form to log money you’ve taken out of this goal"
               onPress={() =>
-                router.push({ pathname: '/add-money', params: { goalId: goal.id, mode: 'withdraw' } })
+                router.push({
+                  pathname: '/add-money',
+                  params: { goalId: goal.id, mode: 'withdraw' },
+                })
               }
             />
           )}
@@ -212,8 +236,8 @@ export default function GoalDetailScreen() {
             {savingMonthsLeft(goal.targetDate) > 0 ? (
               <ThemedText>
                 You need to save{' '}
-                <ThemedText type="defaultBold">{money(progress.monthlyNeeded)}</ThemedText>{' '}
-                per month to reach this by {formatMonthYear(goal.targetDate)}.
+                <ThemedText type="defaultBold">{money(progress.monthlyNeeded)}</ThemedText> per
+                month to reach this by {formatMonthYear(goal.targetDate)}.
                 {perPay ? ` That’s about ${money(perPay.amount)} ${perPay.per}.` : ''}
                 {goal.interestRate ? ' This includes the interest your bank pays.' : ''}
               </ThemedText>
@@ -273,7 +297,8 @@ export default function GoalDetailScreen() {
               }
               return (
                 <ThemedText>
-                  Once you’ve saved something, interest at {formatRate(rate)} a year will help it grow.
+                  Once you’ve saved something, interest at {formatRate(rate)} a year will help it
+                  grow.
                 </ThemedText>
               );
             })()}
@@ -286,7 +311,7 @@ export default function GoalDetailScreen() {
           </Card>
         ) : null}
 
-        {goal.repeating ? (
+        {archived ? null : goal.repeating ? (
           <Card title="Repeating saving" index={1}>
             {(() => {
               const next = nextRepeatingPayment(goal, contributions);
@@ -294,8 +319,8 @@ export default function GoalDetailScreen() {
               return (
                 <View style={styles.repeating} accessible>
                   <ThemedText>
-                    <ThemedText type="defaultBold">{money(goal.repeating.amount)}</ThemedText> on the{' '}
-                    {ordinal(goal.repeating.dayOfMonth)} of every month, logged for you.
+                    <ThemedText type="defaultBold">{money(goal.repeating.amount)}</ThemedText> on
+                    the {ordinal(goal.repeating.dayOfMonth)} of every month, logged for you.
                   </ThemedText>
                   <ThemedText type="small" themeColor="textSecondary">
                     {next
@@ -328,7 +353,8 @@ export default function GoalDetailScreen() {
                     variant="secondary"
                     accessibilityHint="The next payment won’t be logged"
                     onPress={() => {
-                      if (goal.repeating) setRepeatingSaving(goal.id, skipNextRepeating(goal.repeating));
+                      if (goal.repeating)
+                        setRepeatingSaving(goal.id, skipNextRepeating(goal.repeating));
                     }}
                   />
                 </View>
@@ -340,7 +366,8 @@ export default function GoalDetailScreen() {
                 variant="secondary"
                 accessibilityHint="The last skipped payment will be logged after all"
                 onPress={() => {
-                  if (goal.repeating) setRepeatingSaving(goal.id, undoSkipRepeating(goal.repeating));
+                  if (goal.repeating)
+                    setRepeatingSaving(goal.id, undoSkipRepeating(goal.repeating));
                 }}
               />
             )}
@@ -370,7 +397,9 @@ export default function GoalDetailScreen() {
               targetDate={goal.targetDate}
               currency={currency}
               payFrequency={about.payFrequency}
-              interest={goal.interestRate ? { saved: progress.saved, rate: goal.interestRate } : undefined}
+              interest={
+                goal.interestRate ? { saved: progress.saved, rate: goal.interestRate } : undefined
+              }
             />
           </Card>
         )}
@@ -397,6 +426,12 @@ export default function GoalDetailScreen() {
                 key={entry.id}
                 contribution={entry}
                 currency={currency}
+                onEdit={() =>
+                  router.push({
+                    pathname: '/add-money',
+                    params: { goalId: goal.id, contributionId: entry.id },
+                  })
+                }
                 onDelete={() => confirmDeleteContribution(entry)}
               />
             ))
@@ -413,6 +448,14 @@ export default function GoalDetailScreen() {
             variant="secondary"
             onPress={() => router.push({ pathname: '/goal-editor', params: { id: goal.id } })}
           />
+          {!archived && (
+            <Button
+              title="Archive goal"
+              variant="secondary"
+              accessibilityHint="Hides this goal from your lists and totals. You can restore it any time"
+              onPress={() => archiveGoal(goal.id)}
+            />
+          )}
           <Button title="Delete goal" variant="danger" onPress={confirmDeleteGoal} />
         </View>
       </ScrollView>

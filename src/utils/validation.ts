@@ -101,7 +101,7 @@ export const NOTE_MAX_LENGTH = 100;
 export function validateContributionAmount(text: string): ValidationResult<number> {
   return validateAmount(text, {
     emptyError: 'Please enter how much you saved.',
-    negativeError: "The amount can't be negative. To fix a mistake, delete it from the history.",
+    negativeError: "The amount can't be negative. To fix a mistake, edit or delete it in the history.",
     max: MAX_GOAL_TARGET,
   });
 }

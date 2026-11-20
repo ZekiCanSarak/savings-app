@@ -16,7 +16,7 @@ import { useAbout, useContributions, useGoals, useProfile } from '@/hooks/use-ap
 import type { AboutYou, Contribution, CurrencyCode, SavingsGoal } from '@/types/models';
 import { budgetSplit, incomeLevel, savedThisMonth, tipsFor } from '@/utils/budget';
 import { parseIsoDate, savingMonthsLeft, todayIsoDate } from '@/utils/dates';
-import { isGoalComplete, monthlyAmountNeeded } from '@/utils/goals';
+import { activeGoals, isGoalComplete, monthlyAmountNeeded } from '@/utils/goals';
 import { formatMoney } from '@/utils/money';
 import { currentStreak } from '@/utils/streaks';
 import { defaultReviewYear } from '@/utils/year-review';
@@ -43,7 +43,7 @@ const GOOD_TO_KNOW = [
 
 export default function BudgetScreen() {
   const profile = useProfile();
-  const goals = useGoals();
+  const goals = activeGoals(useGoals());
   const contributions = useContributions();
   const about = useAbout();
   const { currency, monthlyIncome } = profile;

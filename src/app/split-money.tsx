@@ -14,7 +14,7 @@ import { CURRENCIES } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppActions, useContributions, useCurrency, useGoals } from '@/hooks/use-app-data';
 import { addDays, todayIsoDate } from '@/utils/dates';
-import { amountRemaining, sortGoalsForDisplay } from '@/utils/goals';
+import { activeGoals, amountRemaining, sortGoalsForDisplay } from '@/utils/goals';
 import { formatMoney, parseMoneyInput } from '@/utils/money';
 import { splitByNeed, splitEvenly } from '@/utils/split';
 import {
@@ -42,7 +42,7 @@ function close() {
  * Saving logs one saving per goal with a share above 0.
  */
 export default function SplitMoneyScreen() {
-  const allGoals = useGoals();
+  const allGoals = activeGoals(useGoals());
   const contributions = useContributions();
   const currency = useCurrency();
   const { addContributions } = useAppActions();

@@ -34,6 +34,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Sharing: web landing page for first-time visitors, "Try the demo" with sample data, feedback form (Home card after 5 days, Settings, landing), link preview image
 - [x] Repeating savings (logged automatically each month), data protection (persistent web storage, "add to home screen" card, monthly backup reminder, last backup in Settings)
 - [x] Interest rate per goal (from the user's own bank) in the monthly plan, "What if" planner and an "Interest (estimate)" card; shorter welcome flow
+- [x] Edit a saving, archive / restore a goal, Goalpot phone icon + splash, unit tests (Jest) and browser tests (`e2e/`) in the project
 
 Update this list as features land.
 
@@ -86,6 +87,8 @@ Update this list as features land.
 
 ## Saving features
 
+- **Editing a saving:** `add-money?goalId=&contributionId=` opens that entry (amount, date, note; saved vs taken out can't change) and saves with `updateContribution`. Limits and "left to save" are worked out from the goal's total without that entry. Each history row has Edit and Delete.
+- **Archiving** (`SavingsGoal.archivedAt`, `archiveGoal` / `restoreGoal`): an archived goal is left out of everything about current goals (use `activeGoals(goals)`: Home totals and bars, reminders and notifications, payday check-in, Budget's per-goal amounts, Split money, the Goals list, which shows it in a closed "Archived (n)" shelf). Its savings still count in streaks, "Your months", "saved this month" and the year in review. Its repeating saving pauses (`loggedThrough` keeps moving, so restoring doesn't backfill). The goal page shows an "Archived" card with "Restore goal" and hides plans and Add money.
 - **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
 - **Payday check-in** (`components/home/payday-check-in.tsx`, `utils/payday.ts`): when `lastPayday()` was within `CHECK_IN_DAYS` and `paydayCheckIn` isn't that date, Home offers one-tap saving of the suggested per-payday amount to `goalsNeedingAttention()[0]`. Monthly pay uses `payday` (clamped to short months); weekly / 4-weekly use `payWeekday` (asked in the pay question). Pay that varies uses `paySchedule`. 4-weekly can't know which week, so it waits 3+ weeks after an answer.
 - **"What if" planner** (`components/goals/what-if-planner.tsx`, `utils/planner.ts`): ‹ › steps a monthly amount (`plannerStep`) and shows the finish month and months early/late against the target date. Counts this month as the first payment.
@@ -98,6 +101,7 @@ Update this list as features land.
 - **Repeating savings** (`SavingsGoal.repeating`, `utils/repeating.ts`, `app/repeating-saving.tsx?goalId=`): "£100 on the 1st of every month". `useRepeatingSavings` (via `RepeatingSaver`, root layout after onboarding) calls `logRepeatingSavings` at launch, when goals change, on foreground and hourly. `dueRepeatingSavings` turns every month's day after `loggedThrough` (up to today, at most 24) into a normal contribution with note "Repeating", capped so a goal never goes past its target; `loggedThrough` moves on even when nothing is logged, so deleted entries and reached goals don't backfill. New ones start from today (`newRepeatingSaving` sets `loggedThrough` to yesterday); "Skip next" moves `loggedThrough` onto the next date, so a `loggedThrough` after today means skipped payments (`skippedRepeatingDates`, shown as "Skipping …"); "Undo skip" (`undoSkipRepeating`) steps it back one payment, never earlier than yesterday. Days 29–31 use `dayInMonth` (short months → last day). The payday check-in skips goals that have one. Goals (and so `repeating`) are in backups; backup version unchanged because the field is optional.
 - **Data protection:** everything lives on the device, so: `services/web-app(.web).ts` asks the browser for persistent storage once onboarded (`requestPersistentStorage`; Safari otherwise clears site data after ~7 days without a visit unless installed) and has `isInstalledWebApp` / `installDevice`. Home's `InstallCard` (web, not installed, has a goal, until "Got it") explains and shows the device's steps. `BackupReminderCard` (all platforms) shows when `shouldRemindBackup` (30 days since the latest of `lastBackupAt`, `backupPromptSnoozedAt`, `startedAt`; needs savings; never in the demo). Exports go through `hooks/use-export-backup.ts`, which sets `lastBackupAt`; Settings shows "Last backup".
 - **Interest** (`SavingsGoal.interestRate`, hundredths of a percent: 4.25% → 425, max `MAX_INTEREST_RATE` 20%; `utils/interest.ts`): the yearly rate (AER) the user's own bank pays on that goal's money. Goalpot holds no money; it's only used for estimates, and the editor and goal page say so. Entered in the goal editor (`validateInterestRate`: blank or 0 = none; `TextField suffix`). `monthlyAmountNeeded` uses `monthlyNeededWithInterest` when set (so the monthly plan, reminders and Budget's per-goal amounts include it); `whatIf(…, interest)` uses `monthsToReach`. Model: monthly rate (1+AER)^(1/12)−1, payments at the start of each month (this month counts), growth at the end. The goal page shows "Interest (estimate)" (`interestEarned`, with `AdviceNote`) and, when unset, an "Earning interest on this? Add your rate" link. In backups as part of the goal.
+- **Icon and splash:** `assets/images/icon.png` (1024², green with the pot and coin), Android adaptive `android-icon-foreground/background/monochrome.png` (logo inside the safe zone), `splash-icon.png` on `#1F7A52` (`expo-splash-screen`, `imageWidth` 120), `favicon.png`. They match `public/` (web icons). `components/animated-icon.tsx` shows the same logo on green after the native splash, then fades out (web: no overlay). The native icon and splash show in real builds; Expo Go shows the in-app overlay.
 - Device settings (`appearance`, `appLock`, `paydayCheckIn`, `yearReviewDismissed`, `demo`, `startedAt`, `feedbackPromptDismissed`, `lastBackupAt`, `backupPromptSnoozedAt`, `installPromptDismissed`) are not in backups; withdrawals and `payWeekday` are.
 - Month numbers in `YearMonth` are 0–11 (JavaScript `Date`); `'YYYY-MM'` keys need `month + 1`.
 
@@ -230,6 +234,7 @@ src/
     repeating.ts        dueRepeatingSavings, nextRepeatingPayment, skipNextRepeating
     interest.ts         monthlyNeededWithInterest, monthsToReach, interestEarned, formatRate
     id.ts               createId
+e2e/                    Browser tests (puppeteer-core + Chrome): *.spec.js, run-all.js, config.js
 assets/                 Images, icons, splash
 public/                 Copied to the web site root: manifest.json, PWA icons, og-image.png
 ```
@@ -245,7 +250,7 @@ Navigation patterns:
 - When deleting the item a screen shows, navigate away first and delete second.
 - Set a page's header title from inside it with `<Stack.Screen options={{ title }} />`.
 - Goal target dates are months: the month picker stores the last day of the chosen month.
-- Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by deleting the entry (no editing, and no negative amounts; money taken out is a separate `withdrawal` entry).
+- Contributions can't be dated in the future, and can be back-dated up to 5 years. A mistake is fixed by editing or deleting the entry (no negative amounts; money taken out is a separate `withdrawal` entry).
 
 Charts (follow these for every new chart):
 - **Pick the form first.** One headline number → a stat tile or hero figure, not a chart. Comparing goals → ranked horizontal bars on one shared scale, most complete first. Change over time → a line. Avoid donuts and pies, and never use two y-axes.
@@ -314,13 +319,15 @@ Animation & effects:
 npx expo start          # start dev server; scan QR code with Expo Go
 npx expo start --tunnel # same, if phone and PC can't see each other on the network
 npx tsc --noEmit        # type-check
+npm test                # unit tests (Jest, src/**/*.test.ts) for the calculations in src/utils
+npm run test:e2e        # build the web version and run the browser tests in e2e/ (see e2e/README.md)
 npx eslint src          # lint (`npm run lint` / `expo lint` wrongly rejects ESLint 9.39, so run eslint directly)
 npx expo install <pkg>  # add a library at the SDK-compatible version
 npm run preview:web     # build the web version and serve it at http://localhost:8081
 npm run deploy:web      # build and deploy the web version to EAS Hosting
 ```
 
-Before committing: run `npx tsc --noEmit` and make sure the app still opens in Expo Go.
+Before committing: run `npx tsc --noEmit`, `npx eslint src` and `npm test`, run `npm run test:e2e` after changing screens, and make sure the app still opens in Expo Go. Add a unit test when changing a calculation in `src/utils`, and a spec in `e2e/` for a new screen or flow. Test files import `describe` / `it` / `expect` from `@jest/globals`.
 
 `npx tsc --noEmit` and `npx eslint src` both pass with **zero** errors; keep it that way. On a fresh clone, `tsc` reports a `*.css` error and doesn't check route names until `npx expo start` has run once, because that's what generates `expo-env.d.ts` and `.expo/types/`.
 
