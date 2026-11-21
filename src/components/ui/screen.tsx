@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { DemoBanner } from '@/components/demo/demo-banner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { BottomTabInset, MaxContentWidth, ScreenPadding, Spacing } from '@/constants/theme';
 
 type ScreenProps = {

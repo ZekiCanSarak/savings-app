@@ -12,7 +12,7 @@ import { Colors } from '@/constants/theme';
 import { useAppearance, useIsDataReady, useIsOnboarded } from '@/hooks/use-app-data';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { configureNotifications } from '@/services/notifications';
-import { requestPersistentStorage } from '@/services/web-app';
+import { fitInstalledAppToScreen, keepPageInPlace, requestPersistentStorage } from '@/services/web-app';
 
 SplashScreen.preventAutoHideAsync();
 configureNotifications();
@@ -63,6 +63,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (isOnboarded) void requestPersistentStorage();
   }, [isOnboarded]);
+
+  // iOS can leave the page slid up under the clock after the keyboard closes (no-op on phones).
+  useEffect(() => keepPageInPlace(), []);
+  useEffect(() => fitInstalledAppToScreen(), []);
 
   // Keep the splash screen up until saved data has loaded, so screens never
   // flash empty data. (AnimatedSplashOverlay hides the splash when it mounts.)

@@ -1,12 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ModalHeader } from '@/components/ui/modal-header';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useContributions, useCurrency, useGoals } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';

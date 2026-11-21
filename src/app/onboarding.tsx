@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { BackHandler, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { LandingPage } from '@/components/landing/landing-page';
 import { AfterTaxExplainer } from '@/components/profile/after-tax-explainer';
@@ -10,11 +9,12 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { TextButton } from '@/components/ui/text-button';
 import { TextField } from '@/components/ui/text-field';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { CURRENCIES, DEFAULT_CURRENCY } from '@/constants/currencies';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAppActions, useIntroSeen } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
-import { isInstalledWebApp } from '@/services/web-app';
+import { isInstalledWebApp, isTouchWeb } from '@/services/web-app';
 import type { CurrencyCode } from '@/types/models';
 import {
   MONEY_INPUT_MAX_LENGTH,
@@ -92,6 +92,10 @@ export default function OnboardingScreen() {
     completeOnboarding({ name: nameResult.value, currency, monthlyIncome: incomeResult.value });
   }
 
+  // On a phone's browser, focusing straight away opens the keyboard before the
+  // screen is read, and iOS slides the page up under the clock to make room.
+  const autoFocusField = !isTouchWeb();
+
   if (showLanding) return <LandingPage onGetStarted={markIntroSeen} onTryDemo={startDemo} />;
 
   return (
@@ -128,7 +132,7 @@ export default function OnboardingScreen() {
                   }}
                   error={nameError}
                   placeholder="e.g. Sam"
-                  autoFocus
+                  autoFocus={autoFocusField}
                   autoCapitalize="words"
                   autoComplete="given-name"
                   textContentType="givenName"
@@ -179,7 +183,7 @@ export default function OnboardingScreen() {
                   placeholder="e.g. 1850"
                   keyboardType="decimal-pad"
                   maxLength={MONEY_INPUT_MAX_LENGTH}
-                  autoFocus
+                  autoFocus={autoFocusField}
                   returnKeyType="done"
                   onSubmitEditing={() => handleNext()}
                 />

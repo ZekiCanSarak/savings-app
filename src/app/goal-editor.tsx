@@ -1,7 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EmojiPicker } from '@/components/goals/emoji-picker';
 import { MonthPicker } from '@/components/goals/month-picker';
@@ -10,6 +9,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { ModalHeader } from '@/components/ui/modal-header';
 import { TextField } from '@/components/ui/text-field';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { CURRENCIES } from '@/constants/currencies';
 import { DEFAULT_GOAL_EMOJI, GOAL_EMOJIS } from '@/constants/goal-emojis';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';

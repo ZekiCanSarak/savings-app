@@ -7,7 +7,6 @@ import {
   TabListProps,
 } from 'expo-router/ui';
 import { Pressable, StyleSheet, type PressableProps } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { MaxContentWidth, MinTapSize, Spacing } from '@/constants/theme';
 
@@ -63,12 +62,8 @@ export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps
 }
 
 export function CustomTabList(props: TabListProps) {
-  // Keeps the bar clear of the iPhone home indicator when opened from the home screen.
-  const insets = useSafeAreaInsets();
   return (
-    <ThemedView
-      {...props}
-      style={[styles.tabListContainer, { paddingBottom: insets.bottom + Spacing.two }]}>
+    <ThemedView {...props} style={[styles.tabListContainer, styles.homeIndicatorGap]}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         {props.children}
       </ThemedView>
@@ -101,6 +96,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     gap: Spacing.two,
     maxWidth: MaxContentWidth,
+  },
+  // Keeps the bar clear of the iPhone home indicator when opened from the home screen.
+  // CSS env() rather than useSafeAreaInsets(), which reports 0 here on web.
+  homeIndicatorGap: {
+    paddingBottom: `calc(env(safe-area-inset-bottom) + ${Spacing.two}px)` as unknown as number,
   },
   pressed: {
     opacity: 0.7,

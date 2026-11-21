@@ -1,6 +1,5 @@
 import { router } from 'expo-router';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   BudgetStyleQuestion,
@@ -15,6 +14,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ModalHeader } from '@/components/ui/modal-header';
+import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAbout, useAppActions } from '@/hooks/use-app-data';
 import type { AboutYou } from '@/types/models';
