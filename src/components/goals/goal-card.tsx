@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { FadeInView } from '@/components/ui/fade-in-view';
 import { ProgressBar } from '@/components/ui/progress-bar';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -35,10 +35,7 @@ export function GoalCard({ goal, saved, remaining, percent, currency, onPress, i
   const dateText = dateLabel ? `, ${dateLabel}` : '';
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(320)
-        .delay(Math.min(index, 6) * 50)
-        .reduceMotion(ReduceMotion.System)}>
+    <FadeInView index={index}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${goal.name}${dateText}. ${savedText} saved of ${targetText}, ${percent}%. ${
@@ -85,7 +82,7 @@ export function GoalCard({ goal, saved, remaining, percent, currency, onPress, i
           </ThemedText>
         </View>
       </Pressable>
-    </Animated.View>
+    </FadeInView>
   );
 }
 

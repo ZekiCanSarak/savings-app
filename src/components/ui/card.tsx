@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, { FadeInDown, ReduceMotion } from 'react-native-reanimated';
 
 import { ThemedText } from '@/components/themed-text';
+import { FadeInView } from '@/components/ui/fade-in-view';
 import { Radius, Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -31,11 +31,7 @@ export function Card({ title, subtitle, action, index = 0, tone = 'default', sty
   const textColour = tone === 'accent' ? theme.onTint : undefined;
 
   return (
-    <Animated.View
-      entering={FadeInDown.duration(320)
-        .delay(Math.min(index, 6) * 50)
-        .reduceMotion(ReduceMotion.System)}
-      style={[styles.card, { backgroundColor: background }, style]}>
+    <FadeInView index={index} style={[styles.card, { backgroundColor: background }, style]}>
       {(title || action) && (
         <View style={styles.header}>
           <View style={styles.headerText}>
@@ -54,7 +50,7 @@ export function Card({ title, subtitle, action, index = 0, tone = 'default', sty
         </View>
       )}
       {children}
-    </Animated.View>
+    </FadeInView>
   );
 }
 
