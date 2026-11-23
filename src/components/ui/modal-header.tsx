@@ -2,7 +2,8 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { TextButton } from '@/components/ui/text-button';
-import { MinTapSize, ScreenPadding } from '@/constants/theme';
+import { useWebSafeAreaTop } from '@/components/ui/safe-area-view';
+import { MinTapSize, ScreenPadding, Spacing } from '@/constants/theme';
 
 type ModalHeaderProps = {
   title?: string;
@@ -13,8 +14,11 @@ type ModalHeaderProps = {
 
 /** Top bar for full-screen sheets: a close button on the left and a centred title. */
 export function ModalHeader({ title, closeLabel = 'Cancel', onClose }: ModalHeaderProps) {
+  // iPhone home-screen app: iOS fades whatever sits just under the clock, which
+  // made this header look like it was scrolling away. Start lower, like Screen's titles.
+  const webTop = useWebSafeAreaTop();
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, webTop ? styles.clearOfFade : null]}>
       <View style={styles.side}>
         <TextButton title={closeLabel} onPress={onClose} />
       </View>
@@ -36,6 +40,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: ScreenPadding,
     minHeight: MinTapSize + 8,
+  },
+  clearOfFade: {
+    paddingTop: Spacing.three,
   },
   side: {
     width: 80,

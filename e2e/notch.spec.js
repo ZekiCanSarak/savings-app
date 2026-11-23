@@ -57,7 +57,13 @@ const check = (name, ok, extra = '') => results.push(`${ok ? 'PASS' : 'FAIL'}  $
     const back = [...document.querySelectorAll('[aria-label]')].find((e) => /back/i.test(e.getAttribute('aria-label')) && e.getBoundingClientRect().height > 0);
     return back ? back.getBoundingClientRect().top : null;
   });
-  check('goal page: back button below the notch', top !== null && top >= TOP, String(top));
+  // iOS fades a strip just under the clock, so headers keep some distance from it.
+  check('goal page: back button clear of the faded strip under the clock', top !== null && top >= TOP + 12, String(top));
+
+  await page.evaluate(() => { history.pushState({}, '', '/about-you'); dispatchEvent(new PopStateEvent('popstate')); });
+  await sleep(1500);
+  top = await topOf('Close');
+  check('pop-up header clear of the faded strip under the clock', top !== null && top >= TOP + 24, String(top));
 
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(results.join('\n'));
