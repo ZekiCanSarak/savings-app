@@ -65,6 +65,21 @@ const check = (name, ok, extra = '') => results.push(`${ok ? 'PASS' : 'FAIL'}  $
   top = await topOf('Close');
   check('pop-up header clear of the faded strip under the clock', top !== null && top >= TOP + 24, String(top));
 
+  // iOS 18 can size the installed app's page 62pt shorter than the screen, and at
+  // launch may not have worked out the notch height yet. The page must still fill the screen.
+  const short = await browser.newPage();
+  await short.emulate({ viewport: { width: 440, height: 894, deviceScaleFactor: 2, isMobile: true, hasTouch: true }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+  await short.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'standalone', { get: () => true });
+    Object.defineProperty(screen, 'height', { get: () => 956 });
+    Object.defineProperty(screen, 'width', { get: () => 440 });
+  });
+  await short.goto(BASE + '/', { waitUntil: 'networkidle0' });
+  await sleep(1500);
+  const filled = await short.evaluate(() => ({ html: document.documentElement.style.height, root: Math.round(document.getElementById('root').getBoundingClientRect().height) }));
+  check('installed app fills the screen even before the notch height is known', filled.html === '956px' && filled.root === 956, JSON.stringify(filled));
+  await short.close();
+
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(results.join('\n'));
   await browser.close();

@@ -63,6 +63,8 @@ export function keepPageInPlace(): () => void {
   };
 }
 
+const MAX_STATUS_BAR = 80;
+
 export function isTouchWeb(): boolean {
   return installDevice() !== 'computer';
 }
@@ -71,29 +73,43 @@ export function isTouchWeb(): boolean {
  * iOS 18 draws the home-screen app from the very top of the screen (behind the
  * clock) but sizes the page as if the status bar took up room, which left an
  * empty strip of that height at the bottom. Where the page comes out shorter
- * than the screen by exactly the top safe area, make it that much taller.
+ * than the screen by about a status bar, make it as tall as the screen.
+ *
+ * This used to wait for the notch height (env(safe-area-inset-top)), which iOS
+ * sometimes hadn't worked out yet at launch, so on some launches the tab bar
+ * sat too high. Now only screen sizes are used, checked again shortly after
+ * launch and whenever the app comes back to the front.
  */
 export function fitInstalledAppToScreen(): () => void {
-  if (typeof window === 'undefined' || !isInstalledWebApp()) return () => {};
+  if (typeof window === 'undefined' || !isInstalledWebApp() || installDevice() !== 'iphone') return () => {};
   const html = document.documentElement;
   const fit = () => {
-    const probe = document.createElement('div');
-    probe.style.cssText = 'position:fixed;visibility:hidden;padding-top:env(safe-area-inset-top)';
-    document.body.appendChild(probe);
-    const top = parseFloat(getComputedStyle(probe).paddingTop) || 0;
-    probe.remove();
     // screen.height doesn't swap when the phone is turned, so only in portrait.
     const portrait = window.innerWidth === screen.width;
     const full = `${screen.height}px`;
     // Once stretched, iOS reports the full height, so keep it rather than undo it.
     const stretched = html.style.height === full;
-    const short = Math.abs(screen.height - window.innerHeight - top) <= 1;
-    html.style.height = portrait && top > 0 && (stretched || short) ? full : '';
+    // A status bar is 20–62 points; a bigger gap means something else (e.g. the keyboard).
+    const missing = screen.height - window.innerHeight;
+    const short = missing > 0 && missing <= MAX_STATUS_BAR;
+    html.style.height = portrait && (stretched || short) ? full : '';
+  };
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') fit();
   };
   fit();
+  // iOS can settle the page size a moment after launch without a resize event.
+  const timers = [100, 400, 1000, 2500].map((ms) => setTimeout(fit, ms));
   window.addEventListener('resize', fit);
+  window.addEventListener('orientationchange', fit);
+  window.addEventListener('pageshow', fit);
+  document.addEventListener('visibilitychange', onVisible);
   return () => {
+    timers.forEach(clearTimeout);
     window.removeEventListener('resize', fit);
+    window.removeEventListener('orientationchange', fit);
+    window.removeEventListener('pageshow', fit);
+    document.removeEventListener('visibilitychange', onVisible);
     html.style.height = '';
   };
 }
