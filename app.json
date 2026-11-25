@@ -37,6 +37,14 @@
         {
           "faceIDPermission": "Allow Goalpot to use Face ID to unlock the app."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Goalpot lets you add a photo to a goal. Photos stay on your phone.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

@@ -3,17 +3,21 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { EmojiPicker } from '@/components/goals/emoji-picker';
+import { GoalAvatar } from '@/components/goals/goal-avatar';
 import { MonthPicker } from '@/components/goals/month-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { ModalHeader } from '@/components/ui/modal-header';
+import { TextButton } from '@/components/ui/text-button';
 import { TextField } from '@/components/ui/text-field';
 import { SafeAreaView } from '@/components/ui/safe-area-view';
 import { CURRENCIES } from '@/constants/currencies';
 import { DEFAULT_GOAL_EMOJI, GOAL_EMOJIS } from '@/constants/goal-emojis';
 import { MaxContentWidth, Radius, Spacing } from '@/constants/theme';
 import { useAppActions, useContributions, useCurrency, useGoal } from '@/hooks/use-app-data';
+import { useTheme } from '@/hooks/use-theme';
+import { pickGoalImage } from '@/services/goal-image';
 import type { IsoDate } from '@/types/models';
 import { formatMonthYear, todayIsoDate } from '@/utils/dates';
 import { monthlyAmountNeeded, totalSaved } from '@/utils/goals';
@@ -92,6 +96,9 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
   const [targetDate, setTargetDate] = useState<IsoDate | null>(existing?.targetDate ?? null);
   const [emoji, setEmoji] = useState(existing?.emoji ?? suggested.emoji);
   const [rateText, setRateText] = useState(interestRateToInputText(existing?.interestRate));
+  const [image, setImage] = useState<string | undefined>(existing?.image);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const theme = useTheme();
   const [rateError, setRateError] = useState<string | null>(null);
   const [nameError, setNameError] = useState<string | null>(null);
   const [targetError, setTargetError] = useState<string | null>(null);
@@ -124,6 +131,16 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
         )
       : null;
 
+  async function choosePhoto() {
+    setImageError(null);
+    try {
+      const picked = await pickGoalImage();
+      if (picked) setImage(picked);
+    } catch {
+      setImageError('That photo couldn’t be used. Try a different one.');
+    }
+  }
+
   function handleSave() {
     const nameResult = validateGoalName(name);
     const targetResult = validateGoalTarget(targetText);
@@ -144,6 +161,8 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
       emoji,
       // undefined clears a rate that was removed (it isn't saved).
       interestRate: rateResult.value ?? undefined,
+      // Likewise, undefined removes a photo.
+      image,
     };
     if (existing) updateGoal(existing.id, values);
     else addGoal(values);
@@ -160,7 +179,35 @@ function GoalForm({ goalId, suggestion }: { goalId?: string; suggestion?: GoalSu
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.preview}>
-              <ThemedText type="emojiLarge" accessibilityLabel={`Chosen icon: ${emoji}`}>{emoji}</ThemedText>
+              <View accessible accessibilityLabel={image ? 'Goal photo chosen' : `Chosen icon: ${emoji}`}>
+                <GoalAvatar
+                  emoji={emoji}
+                  image={image}
+                  size={image ? 120 : 72}
+                  radius={Radius.card}
+                  backgroundColor={image ? theme.backgroundElement : 'transparent'}
+                  emojiType="emojiLarge"
+                />
+              </View>
+              <View style={styles.photoButtons}>
+                <TextButton
+                  title={image ? 'Change photo' : 'Add a photo'}
+                  accessibilityHint="Choose a photo from your phone to show on this goal"
+                  onPress={choosePhoto}
+                />
+                {image && (
+                  <TextButton
+                    title="Remove photo"
+                    accessibilityHint="Goes back to showing the emoji"
+                    onPress={() => setImage(undefined)}
+                  />
+                )}
+              </View>
+              {imageError ? (
+                <ThemedText type="small" themeColor="danger">
+                  {imageError}
+                </ThemedText>
+              ) : null}
             </View>
 
             <TextField
@@ -281,6 +328,11 @@ const styles = StyleSheet.create({
   },
   preview: {
     alignItems: 'center',
+    gap: Spacing.one,
+  },
+  photoButtons: {
+    flexDirection: 'row',
+    gap: Spacing.three,
   },
   hint: {
     padding: Spacing.three,

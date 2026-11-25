@@ -44,8 +44,29 @@ const noopStorage: StateStorage = {
   removeItem: () => {},
 };
 
+/**
+ * Saving can fail when storage is full (browsers allow ~5 MB, and goal photos
+ * take some of it). Instead of failing silently, tell whoever is listening
+ * (the root layout shows a message); the data stays in memory meanwhile.
+ */
+let onSaveFailed: (() => void) | null = null;
+export function setSaveFailedHandler(handler: (() => void) | null) {
+  onSaveFailed = handler;
+}
+const safeStorage: StateStorage = {
+  getItem: (key) => AsyncStorage.getItem(key),
+  setItem: async (key, value) => {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {
+      onSaveFailed?.();
+    }
+  },
+  removeItem: (key) => AsyncStorage.removeItem(key),
+};
+
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 8;
+const STORAGE_VERSION = 9;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -287,7 +308,7 @@ export const useAppStore = create<AppState>()(
     {
       name: STORAGE_KEY,
       version: STORAGE_VERSION,
-      storage: createJSONStorage(() => (isServerRender ? noopStorage : AsyncStorage)),
+      storage: createJSONStorage(() => (isServerRender ? noopStorage : safeStorage)),
       // Only save the data itself — not actions or isReady.
       partialize: (s): AppData => ({
         onboardingComplete: s.onboardingComplete,
@@ -319,7 +340,7 @@ export const useAppStore = create<AppState>()(
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
         // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed;
         // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed;
-        // v6 → v7 added goal.interestRate; v7 → v8 added goal.archivedAt.
+        // v6 → v7 added goal.interestRate; v7 → v8 added goal.archivedAt; v8 → v9 added goal.image.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         const data = persisted as AppData;

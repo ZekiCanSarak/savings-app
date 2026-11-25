@@ -6,6 +6,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { AdviceNote } from '@/components/budget/advice-note';
 import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
+import { GoalAvatar } from '@/components/goals/goal-avatar';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
 import { QuickSave } from '@/components/goals/quick-save';
 import { WhatIfPlanner } from '@/components/goals/what-if-planner';
@@ -153,14 +154,14 @@ export default function GoalDetailScreen() {
         )}
 
         <View style={styles.hero}>
-          <View style={[styles.heroEmoji, { backgroundColor: theme.backgroundElement }]}>
-            <ThemedText
-              type="emojiLarge"
-              importantForAccessibility="no"
-              accessibilityElementsHidden>
-              {goal.emoji}
-            </ThemedText>
-          </View>
+          <GoalAvatar
+            emoji={goal.emoji}
+            image={goal.image}
+            size={goal.image ? 132 : 96}
+            radius={Radius.card + 8}
+            backgroundColor={theme.backgroundElement}
+            emojiType="emojiLarge"
+          />
           <ThemedText type="title" style={styles.center} accessibilityRole="header">
             {goal.name}
           </ThemedText>
@@ -503,14 +504,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.two,
     marginBottom: Spacing.two,
-  },
-  heroEmoji: {
-    width: 96,
-    height: 96,
-    borderRadius: Radius.card + 8,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   chip: {
     paddingHorizontal: Spacing.three,

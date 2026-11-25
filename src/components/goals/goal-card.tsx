@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 
+import { GoalAvatar } from '@/components/goals/goal-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { FadeInView } from '@/components/ui/fade-in-view';
 import { ProgressBar } from '@/components/ui/progress-bar';
@@ -49,9 +50,13 @@ export function GoalCard({ goal, saved, remaining, percent, currency, onPress, i
           pressed && styles.pressed,
         ]}>
         <View style={styles.header}>
-          <View style={[styles.emojiBubble, { backgroundColor: theme.background }]}>
-            <ThemedText type="emoji">{goal.emoji}</ThemedText>
-          </View>
+          <GoalAvatar
+            emoji={goal.emoji}
+            image={goal.image}
+            size={48}
+            radius={Radius.control}
+            backgroundColor={theme.background}
+          />
           <View style={styles.titleBlock}>
             <ThemedText type="heading" numberOfLines={2}>
               {goal.name}
@@ -101,14 +106,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.three,
-  },
-  emojiBubble: {
-    width: 48,
-    height: 48,
-    borderRadius: Radius.control,
-    borderCurve: 'continuous',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   titleBlock: {
     flex: 1,

@@ -89,6 +89,7 @@ Update this list as features land.
 ## Saving features
 
 - **Quick save** (`components/goals/quick-save.tsx`, `utils/quick-save.ts`): one-tap +£5 / +£10 / +£20 chips (`quickSaveAmounts`: bigger steps for INR/TRY; steps above what's left become one "finish it" amount, none once reached) on the goal page and Home's `QuickSaveCard` (for `goalsNeedingAttention()[0]`). A tap logs a saving dated today with note "Quick save", then shows "Saved £10 · Undo" for 6s (Undo deletes it).
+- **Goal photos** (`SavingsGoal.image`, `utils/goal-image.ts`, `services/goal-image.ts`, `components/goals/goal-avatar.tsx`): the goal editor's "Add a photo" opens expo-image-picker (no permission prompt; on web it must come straight from a tap), then expo-image-manipulator crops it square and saves a 320×320 JPEG (quality 0.6) as a data URI stored on the goal (~20–30 KB, `isValidGoalImage` caps it at `MAX_GOAL_IMAGE_LENGTH`). `GoalAvatar` shows the photo instead of the emoji on the goal card, goal page and editor. Photos are in backups (part of the goal). Because everything is one save (~5 MB on web), `safeStorage` in `app-store.ts` catches a failed save and `useSaveFailedAlert` (root layout) explains it.
 - **Editing a saving:** `add-money?goalId=&contributionId=` opens that entry (amount, date, note; saved vs taken out can't change) and saves with `updateContribution`. Limits and "left to save" are worked out from the goal's total without that entry. Each history row has Edit and Delete.
 - **Archiving** (`SavingsGoal.archivedAt`, `archiveGoal` / `restoreGoal`): an archived goal is left out of everything about current goals (use `activeGoals(goals)`: Home totals and bars, reminders and notifications, payday check-in, Budget's per-goal amounts, Split money, the Goals list, which shows it in a closed "Archived (n)" shelf). Its savings still count in streaks, "Your months", "saved this month" and the year in review. Its repeating saving pauses (`loggedThrough` keeps moving, so restoring doesn't backfill). The goal page shows an "Archived" card with "Restore goal" and hides plans and Add money.
 - **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
@@ -170,7 +171,7 @@ src/
     profile/            currency-picker.tsx, after-tax-explainer.tsx, about-questions.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx,
-                        quick-save.tsx
+                        quick-save.tsx, goal-avatar.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
     budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx,
                         month-history.tsx
@@ -203,6 +204,7 @@ src/
     use-theme.ts        Current theme colours
     use-repeating-savings.ts  Logs repeating savings when they fall due
     use-export-backup.ts  Exports a backup file and records lastBackupAt
+    use-save-failed-alert.ts  Explains when saving to storage fails (e.g. full)
   services/
     notifications.ts    The ONLY file that imports expo-notifications
     notifications.web.ts  Web stand-in with the same exports (does nothing)
@@ -211,6 +213,7 @@ src/
     app-lock.ts         The ONLY file that imports expo-local-authentication
     app-lock.web.ts     Web stand-in (lock not supported)
     feedback.ts         Opens the feedback form
+    goal-image.ts       Pick a goal photo and shrink it (expo-image-picker + expo-image-manipulator)
     confirm.ts          Yes/no dialog (Alert on phones, window.confirm on web)
     web-app.ts          Persistent storage, installed-app and device checks (web-app.web.ts; no-ops on phones)
   storage/
@@ -237,6 +240,7 @@ src/
     repeating.ts        dueRepeatingSavings, nextRepeatingPayment, skipNextRepeating
     interest.ts         monthlyNeededWithInterest, monthsToReach, interestEarned, formatRate
     quick-save.ts       quickSaveAmounts
+    goal-image.ts       isValidGoalImage, GOAL_IMAGE_SIZE
     id.ts               createId
 e2e/                    Browser tests (puppeteer-core + Chrome): *.spec.js, run-all.js, config.js
 assets/                 Images, icons, splash

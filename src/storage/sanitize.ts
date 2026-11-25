@@ -12,6 +12,7 @@ import type {
   UserProfile,
 } from '@/types/models';
 import { todayIsoDate } from '@/utils/dates';
+import { isValidGoalImage } from '@/utils/goal-image';
 import { MAX_INTEREST_RATE } from '@/utils/interest';
 import { MAX_GOAL_TARGET } from '@/utils/validation';
 
@@ -83,6 +84,7 @@ export function sanitizeGoals(value: unknown): SavingsGoal[] {
         ...(isPositiveWhole(g.interestRate) && g.interestRate <= MAX_INTEREST_RATE
           ? { interestRate: g.interestRate }
           : {}),
+        ...(isValidGoalImage(g.image) ? { image: g.image } : {}),
       },
     ];
   });

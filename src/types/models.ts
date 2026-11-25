@@ -57,6 +57,11 @@ export type SavingsGoal = {
    * check-ins, while its savings still count in streaks and the year in review.
    */
   archivedAt?: IsoTimestamp;
+  /**
+   * A small photo for the goal (a JPEG data URI, see utils/goal-image.ts),
+   * shown instead of the emoji. Missing = show the emoji.
+   */
+  image?: string;
 };
 
 export type Contribution = {
