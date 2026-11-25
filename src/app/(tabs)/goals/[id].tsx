@@ -8,6 +8,7 @@ import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalAvatar } from '@/components/goals/goal-avatar';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
+import { MilestoneBanner } from '@/components/goals/milestone-banner';
 import { QuickSave } from '@/components/goals/quick-save';
 import { WhatIfPlanner } from '@/components/goals/what-if-planner';
 import { ThemedText } from '@/components/themed-text';
@@ -38,6 +39,7 @@ import {
   toIsoDate,
 } from '@/utils/dates';
 import { formatRate, interestEarned } from '@/utils/interest';
+import { crossedMilestone, type Milestone } from '@/utils/milestones';
 import { formatMoney } from '@/utils/money';
 import { perPayPeriod } from '@/utils/personal';
 import { ordinal } from '@/utils/reminders';
@@ -85,9 +87,12 @@ export default function GoalDetailScreen() {
   const percent = progress?.percent ?? 0;
   const [lastPercent, setLastPercent] = useState(percent);
   const [celebrating, setCelebrating] = useState(false);
+  // Same for the smaller 25 / 50 / 75% milestones.
+  const [milestone, setMilestone] = useState<Milestone | null>(null);
   if (percent !== lastPercent) {
     setLastPercent(percent);
     setCelebrating(lastPercent < 100 && percent >= 100);
+    setMilestone(crossedMilestone(lastPercent, percent));
   }
 
   if (!goal || !progress) {
@@ -110,6 +115,10 @@ export default function GoalDetailScreen() {
     progress.monthlyNeeded !== null
       ? perPayPeriod(progress.monthlyNeeded, about.payFrequency)
       : null;
+
+  function openShare() {
+    if (goal) router.push({ pathname: '/share-progress', params: { goalId: goal.id } });
+  }
 
   function confirmDeleteGoal() {
     if (!goal) return;
@@ -150,6 +159,16 @@ export default function GoalDetailScreen() {
             goalName={goal.name}
             targetText={money(goal.targetAmount)}
             onDismiss={() => setCelebrating(false)}
+            onShare={openShare}
+          />
+        )}
+        {milestone && !celebrating && (
+          <MilestoneBanner
+            milestone={milestone}
+            goalName={goal.name}
+            progressText={`${money(progress.saved)} of ${money(goal.targetAmount)}`}
+            onShare={openShare}
+            onDismiss={() => setMilestone(null)}
           />
         )}
 
@@ -219,7 +238,19 @@ export default function GoalDetailScreen() {
             />
           )}
           {!archived && (
-            <QuickSave goalId={goal.id} goalName={goal.name} remaining={progress.remaining} />
+            <QuickSave
+              goalId={goal.id}
+              goalName={goal.name}
+              remaining={progress.remaining}
+              target={goal.targetAmount}
+            />
+          )}
+          {progress.saved > 0 && (
+            <TextButton
+              title="Share my progress"
+              accessibilityHint="Makes an image of your progress to share"
+              onPress={openShare}
+            />
           )}
           {!archived && progress.saved > 0 && (
             <Button
@@ -467,6 +498,9 @@ export default function GoalDetailScreen() {
 
       {/* Usually triggered from the Add money sheet, so wait for it to close. */}
       {celebrating && !reduceMotion && about.celebrations && <Confetti startDelay={450} />}
+      {milestone && !celebrating && !reduceMotion && about.celebrations && (
+        <Confetti key={milestone} startDelay={450} count={22} />
+      )}
     </ThemedView>
   );
 }

@@ -37,7 +37,13 @@ export function QuickSaveCard({ goals, contributions, index }: QuickSaveCardProp
         <ThemedText importantForAccessibility="no">{goal.emoji} </ThemedText>
         <ThemedText type="defaultBold">{goal.name}</ThemedText>
       </ThemedText>
-      <QuickSave goalId={goal.id} goalName={goal.name} remaining={remaining} label="Add to it" />
+      <QuickSave
+        goalId={goal.id}
+        goalName={goal.name}
+        remaining={remaining}
+        target={goal.targetAmount}
+        label="Add to it"
+      />
     </Card>
   );
 }

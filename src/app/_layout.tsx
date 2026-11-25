@@ -102,6 +102,8 @@ export default function RootLayout() {
           <Stack.Screen name="year-review" options={{ presentation: 'modal' }} />
           {/* Set up or change a goal's repeating saving, opened with ?goalId=. */}
           <Stack.Screen name="repeating-saving" options={{ presentation: 'modal' }} />
+          {/* Make and share a progress image for a goal, opened with ?goalId=. */}
+          <Stack.Screen name="share-progress" options={{ presentation: 'modal' }} />
         </Stack.Protected>
         <Stack.Protected guard={!isOnboarded}>
           <Stack.Screen name="onboarding" />

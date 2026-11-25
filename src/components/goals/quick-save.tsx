@@ -7,6 +7,7 @@ import { MinTapSize, Radius, Spacing } from '@/constants/theme';
 import { useAppActions, useCurrency } from '@/hooks/use-app-data';
 import { useTheme } from '@/hooks/use-theme';
 import { todayIsoDate } from '@/utils/dates';
+import { crossedMilestone, MILESTONE_INFO, percentOf } from '@/utils/milestones';
 import { formatMoney } from '@/utils/money';
 import { QUICK_SAVE_NOTE, quickSaveAmounts } from '@/utils/quick-save';
 
@@ -15,10 +16,10 @@ type QuickSaveProps = {
   goalName: string;
   /** What's left to save, in minor units. */
   remaining: number;
+  /** The goal's target, to mention a milestone a quick save passes ("You're halfway! 🎉"). */
+  target: number;
   /** Shown before the buttons, e.g. "Quick save". */
   label?: string;
-  /** Extra text after "Saved £10", e.g. a milestone ("You're halfway! 🎉"). */
-  savedMessage?: (amount: number) => string | null;
 };
 
 /** How long "Saved £10 · Undo" stays before the buttons come back. */
@@ -28,11 +29,19 @@ const UNDO_MS = 6000;
  * One-tap saving: +£5 / +£10 / +£20 buttons that log a saving straight away
  * (dated today), then offer Undo for a few seconds in case of a mis-tap.
  */
-export function QuickSave({ goalId, goalName, remaining, label = 'Quick save', savedMessage }: QuickSaveProps) {
+export function QuickSave({
+  goalId,
+  goalName,
+  remaining,
+  target,
+  label = 'Quick save',
+}: QuickSaveProps) {
   const theme = useTheme();
   const currency = useCurrency();
   const { addContribution, deleteContribution } = useAppActions();
-  const [last, setLast] = useState<{ id: string; amount: number; extra: string | null } | null>(null);
+  const [last, setLast] = useState<{ id: string; amount: number; extra: string | null } | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!last) return;
@@ -45,7 +54,8 @@ export function QuickSave({ goalId, goalName, remaining, label = 'Quick save', s
 
   if (last) {
     return (
-      <View style={[styles.saved, { backgroundColor: theme.background, borderColor: theme.border }]}>
+      <View
+        style={[styles.saved, { backgroundColor: theme.background, borderColor: theme.border }]}>
         <ThemedText style={styles.savedText} accessibilityLiveRegion="polite">
           ✅ Saved <ThemedText type="defaultBold">{money(last.amount)}</ThemedText>
           {last.extra ? ` · ${last.extra}` : ''}
@@ -66,7 +76,12 @@ export function QuickSave({ goalId, goalName, remaining, label = 'Quick save', s
 
   function save(amount: number) {
     const id = addContribution({ goalId, amount, date: todayIsoDate(), note: QUICK_SAVE_NOTE });
-    setLast({ id, amount, extra: savedMessage?.(amount) ?? null });
+    const before = percentOf(target - remaining, target);
+    const after = percentOf(target - remaining + amount, target);
+    const milestone = crossedMilestone(before, after);
+    const extra =
+      after >= 100 ? 'Goal reached! 🎉' : milestone ? MILESTONE_INFO[milestone].short : null;
+    setLast({ id, amount, extra });
   }
 
   return (

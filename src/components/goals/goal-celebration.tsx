@@ -10,10 +10,17 @@ type GoalCelebrationProps = {
   /** e.g. '£900.00' */
   targetText: string;
   onDismiss: () => void;
+  /** Opens the share-progress screen. */
+  onShare?: () => void;
 };
 
 /** "Goal reached!" banner shown on the detail screen the moment a goal hits 100%. */
-export function GoalCelebration({ goalName, targetText, onDismiss }: GoalCelebrationProps) {
+export function GoalCelebration({
+  goalName,
+  targetText,
+  onDismiss,
+  onShare,
+}: GoalCelebrationProps) {
   const theme = useTheme();
 
   return (
@@ -23,32 +30,56 @@ export function GoalCelebration({ goalName, targetText, onDismiss }: GoalCelebra
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
         style={[styles.card, { backgroundColor: theme.tint }]}>
-        <ThemedText type="emojiLarge" importantForAccessibility="no">🎉</ThemedText>
+        <ThemedText type="emojiLarge" importantForAccessibility="no">
+          🎉
+        </ThemedText>
         <ThemedText type="title" style={[styles.center, { color: theme.onTint }]}>
           Goal reached!
         </ThemedText>
         <ThemedText style={[styles.center, { color: theme.onTint }]}>
           You saved {targetText} for {goalName}. That took real discipline. Well done!
         </ThemedText>
-        <Pressable
-          accessibilityRole="button"
-          onPress={onDismiss}
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.dismiss,
-            { borderColor: theme.onTint },
-            pressed && styles.pressed,
-          ]}>
-          <ThemedText type="smallBold" style={{ color: theme.onTint }}>
-            Thanks!
-          </ThemedText>
-        </Pressable>
+        <View style={styles.actions}>
+          {onShare && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityHint="Makes an image of your progress to share"
+              onPress={onShare}
+              hitSlop={8}
+              style={({ pressed }) => [
+                styles.dismiss,
+                { borderColor: theme.onTint, backgroundColor: theme.onTint },
+                pressed && styles.pressed,
+              ]}>
+              <ThemedText type="smallBold" style={{ color: theme.tint }}>
+                Share it
+              </ThemedText>
+            </Pressable>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            onPress={onDismiss}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.dismiss,
+              { borderColor: theme.onTint },
+              pressed && styles.pressed,
+            ]}>
+            <ThemedText type="smallBold" style={{ color: theme.onTint }}>
+              Thanks!
+            </ThemedText>
+          </Pressable>
+        </View>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
+  actions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
   card: {
     alignItems: 'center',
     gap: Spacing.two,

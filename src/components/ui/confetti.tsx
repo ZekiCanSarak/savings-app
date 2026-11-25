@@ -22,8 +22,8 @@ type Piece = {
   round: boolean;
 };
 
-function makePieces(width: number, startDelay: number): Piece[] {
-  return Array.from({ length: PIECE_COUNT }, (_, i) => ({
+function makePieces(width: number, startDelay: number, count: number): Piece[] {
+  return Array.from({ length: count }, (_, i) => ({
     x: Math.random() * width,
     size: 6 + Math.random() * 6,
     colour: COLOURS[i % COLOURS.length],
@@ -38,6 +38,8 @@ function makePieces(width: number, startDelay: number): Piece[] {
 type ConfettiProps = {
   /** Wait this long (ms) before starting, e.g. to let a closing modal get out of the way. */
   startDelay?: number;
+  /** How many pieces: fewer for a smaller celebration (e.g. a milestone). */
+  count?: number;
 };
 
 /**
@@ -45,10 +47,10 @@ type ConfettiProps = {
  * taps. Unmount it to remove it; each mount plays the animation once.
  * Callers should skip it when `useReducedMotion()` is true.
  */
-export function Confetti({ startDelay = 0 }: ConfettiProps) {
+export function Confetti({ startDelay = 0, count = PIECE_COUNT }: ConfettiProps) {
   const { width, height } = useWindowDimensions();
   // Lazy initialiser: random positions are picked once, on first render only.
-  const [pieces] = useState(() => makePieces(width, startDelay));
+  const [pieces] = useState(() => makePieces(width, startDelay, count));
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill}>

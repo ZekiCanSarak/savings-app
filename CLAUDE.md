@@ -90,6 +90,8 @@ Update this list as features land.
 
 - **Quick save** (`components/goals/quick-save.tsx`, `utils/quick-save.ts`): one-tap +£5 / +£10 / +£20 chips (`quickSaveAmounts`: bigger steps for INR/TRY; steps above what's left become one "finish it" amount, none once reached) on the goal page and Home's `QuickSaveCard` (for `goalsNeedingAttention()[0]`). A tap logs a saving dated today with note "Quick save", then shows "Saved £10 · Undo" for 6s (Undo deletes it).
 - **Goal photos** (`SavingsGoal.image`, `utils/goal-image.ts`, `services/goal-image.ts`, `components/goals/goal-avatar.tsx`): the goal editor's "Add a photo" opens expo-image-picker (no permission prompt; on web it must come straight from a tap), then expo-image-manipulator crops it square and saves a 320×320 JPEG (quality 0.6) as a data URI stored on the goal (~20–30 KB, `isValidGoalImage` caps it at `MAX_GOAL_IMAGE_LENGTH`). `GoalAvatar` shows the photo instead of the emoji on the goal card, goal page and editor. Photos are in backups (part of the goal). Because everything is one save (~5 MB on web), `safeStorage` in `app-store.ts` catches a failed save and `useSaveFailedAlert` (root layout) explains it.
+- **Milestones** (`utils/milestones.ts`: `crossedMilestone`, `MILESTONE_INFO`, `percentOf`): passing 25 / 50 / 75% shows `MilestoneBanner` on the goal page (same "compare with the previous percent during render" pattern as the 100% celebration, light confetti with `count`, respecting `about.celebrations` and reduce motion), and quick save's "Saved £10" mentions it.
+- **Share my progress** (`app/share-progress.tsx?goalId=`, `components/share/progress-card.tsx`, `services/share-image(.web).ts`): a 1080×1350 react-native-svg card (photo or emoji, name, percent, bar, "Saving with Goalpot · goalpot.expo.app"; amounts only with "Show amounts", off by default) turned into a PNG with `Svg.toDataURL` *before* the tap (browsers only allow the share sheet straight from one), then shared: phones write it to the cache and open the share sheet; web uses `navigator.share({ files })` on touch devices, else downloads. Linked from the goal page, the milestone banner and the goal-reached banner. Brand colours are fixed (not light/dark); on web the SVG text needs an explicit sans-serif `fontFamily`.
 - **Editing a saving:** `add-money?goalId=&contributionId=` opens that entry (amount, date, note; saved vs taken out can't change) and saves with `updateContribution`. Limits and "left to save" are worked out from the goal's total without that entry. Each history row has Edit and Delete.
 - **Archiving** (`SavingsGoal.archivedAt`, `archiveGoal` / `restoreGoal`): an archived goal is left out of everything about current goals (use `activeGoals(goals)`: Home totals and bars, reminders and notifications, payday check-in, Budget's per-goal amounts, Split money, the Goals list, which shows it in a closed "Archived (n)" shelf). Its savings still count in streaks, "Your months", "saved this month" and the year in review. Its repeating saving pauses (`loggedThrough` keeps moving, so restoring doesn't backfill). The goal page shows an "Archived" card with "Restore goal" and hides plans and Add money.
 - **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
@@ -154,6 +156,7 @@ src/
     split-money.tsx     Modal: share one amount between several goals
     year-review.tsx     Modal: a year's saving at a glance (?year=2026)
     repeating-saving.tsx  Modal: set up / change / stop a goal's repeating saving (?goalId=)
+    share-progress.tsx  Modal: make and share a progress image (?goalId=)
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -171,7 +174,8 @@ src/
     profile/            currency-picker.tsx, after-tax-explainer.tsx, about-questions.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
                         contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx,
-                        quick-save.tsx, goal-avatar.tsx
+                        quick-save.tsx, goal-avatar.tsx, milestone-banner.tsx
+    share/              progress-card.tsx (share image, react-native-svg)
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
     budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx,
                         month-history.tsx
@@ -214,6 +218,7 @@ src/
     app-lock.web.ts     Web stand-in (lock not supported)
     feedback.ts         Opens the feedback form
     goal-image.ts       Pick a goal photo and shrink it (expo-image-picker + expo-image-manipulator)
+    share-image.ts      Share a PNG (share sheet); share-image.web.ts: navigator.share / download
     confirm.ts          Yes/no dialog (Alert on phones, window.confirm on web)
     web-app.ts          Persistent storage, installed-app and device checks (web-app.web.ts; no-ops on phones)
   storage/
@@ -241,6 +246,7 @@ src/
     interest.ts         monthlyNeededWithInterest, monthsToReach, interestEarned, formatRate
     quick-save.ts       quickSaveAmounts
     goal-image.ts       isValidGoalImage, GOAL_IMAGE_SIZE
+    milestones.ts       crossedMilestone, MILESTONE_INFO, percentOf
     id.ts               createId
 e2e/                    Browser tests (puppeteer-core + Chrome): *.spec.js, run-all.js, config.js
 assets/                 Images, icons, splash
