@@ -88,6 +88,7 @@ Update this list as features land.
 
 ## Saving features
 
+- **Quick save** (`components/goals/quick-save.tsx`, `utils/quick-save.ts`): one-tap +£5 / +£10 / +£20 chips (`quickSaveAmounts`: bigger steps for INR/TRY; steps above what's left become one "finish it" amount, none once reached) on the goal page and Home's `QuickSaveCard` (for `goalsNeedingAttention()[0]`). A tap logs a saving dated today with note "Quick save", then shows "Saved £10 · Undo" for 6s (Undo deletes it).
 - **Editing a saving:** `add-money?goalId=&contributionId=` opens that entry (amount, date, note; saved vs taken out can't change) and saves with `updateContribution`. Limits and "left to save" are worked out from the goal's total without that entry. Each history row has Edit and Delete.
 - **Archiving** (`SavingsGoal.archivedAt`, `archiveGoal` / `restoreGoal`): an archived goal is left out of everything about current goals (use `activeGoals(goals)`: Home totals and bars, reminders and notifications, payday check-in, Budget's per-goal amounts, Split money, the Goals list, which shows it in a closed "Archived (n)" shelf). Its savings still count in streaks, "Your months", "saved this month" and the year in review. Its repeating saving pauses (`loggedThrough` keeps moving, so restoring doesn't backfill). The goal page shows an "Archived" card with "Restore goal" and hides plans and Add money.
 - **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
@@ -168,7 +169,8 @@ src/
                         confetti.tsx
     profile/            currency-picker.tsx, after-tax-explainer.tsx, about-questions.tsx
     goals/              goal-card.tsx, emoji-picker.tsx, month-picker.tsx,
-                        contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx
+                        contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx,
+                        quick-save.tsx
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
     budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx,
                         month-history.tsx
@@ -176,7 +178,7 @@ src/
                         reminder-preview.tsx, reminder-scheduler.tsx (invisible, in root layout)
     home/               savings-summary.tsx (hero total + stat tiles), payday-check-in.tsx,
                         streak-card.tsx, year-review-card.tsx, backup-reminder-card.tsx,
-                        install-card.tsx (web)
+                        install-card.tsx (web), quick-save-card.tsx
     repeating/          repeating-saver.tsx (invisible, in root layout)
     landing/            landing-page.web.tsx (web landing page), landing-page.tsx (native stub)
     demo/               demo-banner.tsx ("You're looking at sample data")
@@ -234,6 +236,7 @@ src/
     feedback.ts         shouldAskForFeedback
     repeating.ts        dueRepeatingSavings, nextRepeatingPayment, skipNextRepeating
     interest.ts         monthlyNeededWithInterest, monthsToReach, interestEarned, formatRate
+    quick-save.ts       quickSaveAmounts
     id.ts               createId
 e2e/                    Browser tests (puppeteer-core + Chrome): *.spec.js, run-all.js, config.js
 assets/                 Images, icons, splash

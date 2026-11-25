@@ -7,6 +7,7 @@ import { AdviceNote } from '@/components/budget/advice-note';
 import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalCelebration } from '@/components/goals/goal-celebration';
+import { QuickSave } from '@/components/goals/quick-save';
 import { WhatIfPlanner } from '@/components/goals/what-if-planner';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -215,6 +216,9 @@ export default function GoalDetailScreen() {
               accessibilityHint="Opens a form to log money you’ve saved"
               onPress={() => router.push({ pathname: '/add-money', params: { goalId: goal.id } })}
             />
+          )}
+          {!archived && (
+            <QuickSave goalId={goal.id} goalName={goal.name} remaining={progress.remaining} />
           )}
           {!archived && progress.saved > 0 && (
             <Button

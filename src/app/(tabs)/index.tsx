@@ -8,6 +8,7 @@ import { FeedbackCard } from '@/components/feedback/feedback-card';
 import { BackupReminderCard } from '@/components/home/backup-reminder-card';
 import { InstallCard } from '@/components/home/install-card';
 import { PaydayCheckIn } from '@/components/home/payday-check-in';
+import { QuickSaveCard } from '@/components/home/quick-save-card';
 import { SavingsSummary } from '@/components/home/savings-summary';
 import { StreakCard } from '@/components/home/streak-card';
 import { YearReviewCard } from '@/components/home/year-review-card';
@@ -147,6 +148,8 @@ export default function HomeScreen() {
           <SavingsSummary summary={summary} goalCount={goals.length} currency={currency} />
 
           <StreakCard contributions={contributions} index={2} />
+
+          <QuickSaveCard goals={goals} contributions={contributions} index={2} />
 
           <Card
             title="Progress by goal"
