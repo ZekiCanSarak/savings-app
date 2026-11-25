@@ -345,6 +345,12 @@ export default function SettingsScreen() {
 
       <Card title="Look back" index={2}>
         <Button
+          title="Savings challenges"
+          variant="secondary"
+          accessibilityHint="Opens the 52-week, 100 envelopes and 30-day challenges"
+          onPress={() => router.push('/challenges')}
+        />
+        <Button
           title={`Your ${reviewYear} in review`}
           variant="secondary"
           accessibilityHint="Opens a summary of your year's saving"

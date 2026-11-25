@@ -35,6 +35,7 @@ The default currency is GBP (£), and the user can pick another one in Settings 
 - [x] Repeating savings (logged automatically each month), data protection (persistent web storage, "add to home screen" card, monthly backup reminder, last backup in Settings)
 - [x] Interest rate per goal (from the user's own bank) in the monthly plan, "What if" planner and an "Interest (estimate)" card; shorter welcome flow
 - [x] Edit a saving, archive / restore a goal, Goalpot phone icon + splash, unit tests (Jest) and browser tests (`e2e/`) in the project
+- [x] One-tap quick save, goal photos, milestones (25/50/75%) + share-my-progress image, savings challenges (52-week, 100 envelopes, 30-day)
 
 Update this list as features land.
 
@@ -92,6 +93,7 @@ Update this list as features land.
 - **Goal photos** (`SavingsGoal.image`, `utils/goal-image.ts`, `services/goal-image.ts`, `components/goals/goal-avatar.tsx`): the goal editor's "Add a photo" opens expo-image-picker (no permission prompt; on web it must come straight from a tap), then expo-image-manipulator crops it square and saves a 320×320 JPEG (quality 0.6) as a data URI stored on the goal (~20–30 KB, `isValidGoalImage` caps it at `MAX_GOAL_IMAGE_LENGTH`). `GoalAvatar` shows the photo instead of the emoji on the goal card, goal page and editor. Photos are in backups (part of the goal). Because everything is one save (~5 MB on web), `safeStorage` in `app-store.ts` catches a failed save and `useSaveFailedAlert` (root layout) explains it.
 - **Milestones** (`utils/milestones.ts`: `crossedMilestone`, `MILESTONE_INFO`, `percentOf`): passing 25 / 50 / 75% shows `MilestoneBanner` on the goal page (same "compare with the previous percent during render" pattern as the 100% celebration, light confetti with `count`, respecting `about.celebrations` and reduce motion), and quick save's "Saved £10" mentions it.
 - **Share my progress** (`app/share-progress.tsx?goalId=`, `components/share/progress-card.tsx`, `services/share-image(.web).ts`): a 1080×1350 react-native-svg card (photo or emoji, name, percent, bar, "Saving with Goalpot · goalpot.expo.app"; amounts only with "Show amounts", off by default) turned into a PNG with `Svg.toDataURL` *before* the tap (browsers only allow the share sheet straight from one), then shared: phones write it to the cache and open the share sheet; web uses `navigator.share({ files })` on touch devices, else downloads. Linked from the goal page, the milestone banner and the goal-reached banner. Brand colours are fixed (not light/dark); on web the SVG text needs an explicit sans-serif `fontFamily`.
+- **Savings challenges** (`AppData.challenges: Challenge[]`, `utils/challenges.ts`, `app/challenges.tsx`, `app/challenge.tsx?id=`, `components/challenges/challenge-card.tsx`): 52-week (week n = n × step, £1,378 at £1), 100 envelopes (any order, £505 at 10p) and 30-day (same every day); step sizes from `challengeUnits` (scaled for INR/TRY). One challenge per goal. `toggleChallengeStep` ticks a step by logging a normal saving dated today (note "52-week challenge · Week 3") and remembers its contribution id in `steps`; unticking deletes that saving. A step only counts while its saving exists (`doneSteps`), and `sanitizeChallenges` drops challenges whose goal is gone and steps whose saving is gone. `deleteGoal` removes the goal's challenges; archived goals' challenges are hidden; ending a challenge keeps its savings. Home's `ChallengeCard` shows running challenges (or invites one when a goal needs money), the goal page shows its own, and Settings links to them. In backups (`BackupData.challenges`, optional; older backups import with none). Storage version 10.
 - **Editing a saving:** `add-money?goalId=&contributionId=` opens that entry (amount, date, note; saved vs taken out can't change) and saves with `updateContribution`. Limits and "left to save" are worked out from the goal's total without that entry. Each history row has Edit and Delete.
 - **Archiving** (`SavingsGoal.archivedAt`, `archiveGoal` / `restoreGoal`): an archived goal is left out of everything about current goals (use `activeGoals(goals)`: Home totals and bars, reminders and notifications, payday check-in, Budget's per-goal amounts, Split money, the Goals list, which shows it in a closed "Archived (n)" shelf). Its savings still count in streaks, "Your months", "saved this month" and the year in review. Its repeating saving pauses (`loggedThrough` keeps moving, so restoring doesn't backfill). The goal page shows an "Archived" card with "Restore goal" and hides plans and Add money.
 - **Withdrawals ("Take money out"):** a `Contribution` with `withdrawal: true` (amount still positive). Always sum with `signedAmount()`; `totalSaved`, `savedThisMonth` and `savingsOverTime` never go below 0. `add-money?goalId=&mode=withdraw` logs one, limited to what the goal holds (`validateWithdrawalAmount`). History shows "−£50 taken out".
@@ -157,6 +159,8 @@ src/
     year-review.tsx     Modal: a year's saving at a glance (?year=2026)
     repeating-saving.tsx  Modal: set up / change / stop a goal's repeating saving (?goalId=)
     share-progress.tsx  Modal: make and share a progress image (?goalId=)
+    challenges.tsx      Modal: your savings challenges + start one
+    challenge.tsx       Modal: one challenge's grid of steps (?id=)
     (tabs)/             Group for the tab screens ("(tabs)" isn't in the URL)
       _layout.tsx       Renders the tab bar
       index.tsx         Home tab
@@ -176,6 +180,7 @@ src/
                         contribution-row.tsx, goal-celebration.tsx, what-if-planner.tsx,
                         quick-save.tsx, goal-avatar.tsx, milestone-banner.tsx
     share/              progress-card.tsx (share image, react-native-svg)
+    challenges/         challenge-card.tsx (Home + goal page)
     charts/             savings-line-chart.tsx (gifted-charts), goal-progress-bars.tsx (Views)
     budget/             budget-split-chart.tsx, tip-card.tsx, tips-section.tsx, advice-note.tsx,
                         month-history.tsx
@@ -247,6 +252,7 @@ src/
     quick-save.ts       quickSaveAmounts
     goal-image.ts       isValidGoalImage, GOAL_IMAGE_SIZE
     milestones.ts       crossedMilestone, MILESTONE_INFO, percentOf
+    challenges.ts       CHALLENGES, challengeTotal, challengeProgress, doneSteps, nextStep
     id.ts               createId
 e2e/                    Browser tests (puppeteer-core + Chrome): *.spec.js, run-all.js, config.js
 assets/                 Images, icons, splash

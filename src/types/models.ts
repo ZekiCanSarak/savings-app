@@ -141,6 +141,25 @@ export type AboutYou = {
   emergencyPromptDismissed: boolean;
 };
 
+/** The savings challenges on offer (see utils/challenges.ts). */
+export type ChallengeKind = '52-week' | '100-envelopes' | 'daily';
+
+/**
+ * A savings challenge linked to a goal, e.g. the 52-week challenge. Ticking a
+ * step logs a normal saving to the goal; `steps` remembers which saving each
+ * ticked step made, so unticking can remove it again.
+ */
+export type Challenge = {
+  id: string;
+  kind: ChallengeKind;
+  goalId: string;
+  /** Minor units per step, e.g. 100 = £1 (week 3 of the 52-week challenge saves 3 × £1). */
+  unit: number;
+  startedAt: IsoTimestamp;
+  /** Ticked step number → the id of the contribution it logged. */
+  steps: Record<string, string>;
+};
+
 /** 'system' follows the phone's light/dark setting. */
 export type Appearance = 'system' | 'light' | 'dark';
 
@@ -175,4 +194,6 @@ export type AppData = {
   installPromptDismissed: boolean;
   goals: SavingsGoal[];
   contributions: Contribution[];
+  /** Savings challenges (52-week, 100 envelopes, daily), each linked to a goal. */
+  challenges: Challenge[];
 };

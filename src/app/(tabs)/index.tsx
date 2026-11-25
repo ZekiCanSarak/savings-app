@@ -5,6 +5,7 @@ import { AdviceNote } from '@/components/budget/advice-note';
 import { TipCard } from '@/components/budget/tip-card';
 import { GoalProgressBars } from '@/components/charts/goal-progress-bars';
 import { FeedbackCard } from '@/components/feedback/feedback-card';
+import { ChallengeCard } from '@/components/challenges/challenge-card';
 import { BackupReminderCard } from '@/components/home/backup-reminder-card';
 import { InstallCard } from '@/components/home/install-card';
 import { PaydayCheckIn } from '@/components/home/payday-check-in';
@@ -150,6 +151,8 @@ export default function HomeScreen() {
           <StreakCard contributions={contributions} index={2} />
 
           <QuickSaveCard goals={goals} contributions={contributions} index={2} />
+
+          <ChallengeCard goals={goals} contributions={contributions} index={3} />
 
           <Card
             title="Progress by goal"

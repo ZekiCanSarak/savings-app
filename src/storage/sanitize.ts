@@ -10,8 +10,11 @@ import type {
   ReminderSettings,
   SavingsGoal,
   UserProfile,
+  Challenge,
+  ChallengeKind,
 } from '@/types/models';
 import { todayIsoDate } from '@/utils/dates';
+import { CHALLENGES } from '@/utils/challenges';
 import { isValidGoalImage } from '@/utils/goal-image';
 import { MAX_INTEREST_RATE } from '@/utils/interest';
 import { MAX_GOAL_TARGET } from '@/utils/validation';
@@ -39,13 +42,15 @@ export function sanitizeProfile(value: unknown, fallback: UserProfile): UserProf
   return {
     name: typeof value.name === 'string' ? value.name : fallback.name,
     currency: sanitizeCurrency(value.currency),
-    monthlyIncome: Number.isSafeInteger(income) && (income as number) >= 0 ? (income as number) : null,
+    monthlyIncome:
+      Number.isSafeInteger(income) && (income as number) >= 0 ? (income as number) : null,
   };
 }
 
 /** A valid repeating saving as `{ repeating }`, or `{}` to drop a broken one. */
 function sanitizeRepeating(value: unknown): { repeating?: RepeatingSaving } {
-  if (!isObject(value) || !isPositiveWhole(value.amount) || value.amount > MAX_GOAL_TARGET) return {};
+  if (!isObject(value) || !isPositiveWhole(value.amount) || value.amount > MAX_GOAL_TARGET)
+    return {};
   return {
     repeating: {
       amount: value.amount,
@@ -71,7 +76,8 @@ export function sanitizeGoals(value: unknown): SavingsGoal[] {
         id: g.id,
         name: g.name,
         targetAmount: g.targetAmount,
-        targetDate: typeof g.targetDate === 'string' && ISO_DATE.test(g.targetDate) ? g.targetDate : null,
+        targetDate:
+          typeof g.targetDate === 'string' && ISO_DATE.test(g.targetDate) ? g.targetDate : null,
         emoji: typeof g.emoji === 'string' && g.emoji ? g.emoji : DEFAULT_GOAL_EMOJI,
         createdAt:
           typeof g.createdAt === 'string' && !Number.isNaN(Date.parse(g.createdAt))
@@ -96,7 +102,8 @@ export function sanitizeContributions(value: unknown, goalIds: Set<string>): Con
     if (!isObject(c) || typeof c.id !== 'string' || typeof c.goalId !== 'string') return [];
     // Savings for a deleted goal would otherwise still count in "saved this month".
     if (!goalIds.has(c.goalId)) return [];
-    if (!isPositiveWhole(c.amount) || typeof c.date !== 'string' || !ISO_DATE.test(c.date)) return [];
+    if (!isPositiveWhole(c.amount) || typeof c.date !== 'string' || !ISO_DATE.test(c.date))
+      return [];
     return [
       {
         id: c.id,
@@ -125,8 +132,9 @@ function sanitizeReminders(value: unknown, fallback: ReminderSettings): Reminder
 function sanitizePaySchedule(value: unknown): PaySchedule | null {
   if (!isObject(value)) return null;
   if (value.kind === 'dates' && Array.isArray(value.days)) {
-    const days = [...new Set(value.days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 31))]
-      .sort((a, b) => a - b);
+    const days = [
+      ...new Set(value.days.filter((d): d is number => Number.isInteger(d) && d >= 1 && d <= 31)),
+    ].sort((a, b) => a - b);
     return days.length > 0 ? { kind: 'dates', days } : null;
   }
   if (value.kind === 'pattern' && [1, 2, 3, 4, -1].includes(value.week as number)) {
@@ -151,7 +159,8 @@ export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
     payWeekday: Number.isFinite(value.payWeekday) ? clampWhole(value.payWeekday, 1, 7, 6) : null,
     paySchedule: sanitizePaySchedule(value.paySchedule),
     emergencyFund: oneOf(value.emergencyFund, ['covered', 'some', 'none']),
-    budgetStyle: oneOf(value.budgetStyle, ['50-30-20', '60-20-20', '70-20-10']) ?? fallback.budgetStyle,
+    budgetStyle:
+      oneOf(value.budgetStyle, ['50-30-20', '60-20-20', '70-20-10']) ?? fallback.budgetStyle,
     guidance: oneOf(value.guidance, ['guided', 'brief']),
     celebrations: value.celebrations !== false,
     askedAt:
@@ -162,12 +171,63 @@ export function sanitizeAbout(value: unknown, fallback: AboutYou): AboutYou {
   };
 }
 
+/**
+ * Keeps challenges whose goal still exists, and only ticked steps whose saving
+ * still exists (so deleting a saving or a goal can't leave a broken challenge).
+ */
+export function sanitizeChallenges(
+  value: unknown,
+  goalIds: Set<string>,
+  contributionIds: Set<string>,
+): Challenge[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  return value.flatMap((c): Challenge[] => {
+    if (!isObject(c) || typeof c.id !== 'string' || seen.has(c.id)) return [];
+    if (typeof c.kind !== 'string' || !(c.kind in CHALLENGES)) return [];
+    if (typeof c.goalId !== 'string' || !goalIds.has(c.goalId)) return [];
+    if (!isPositiveWhole(c.unit) || c.unit > MAX_GOAL_TARGET) return [];
+    seen.add(c.id);
+    const kind = c.kind as ChallengeKind;
+    const steps: Record<string, string> = {};
+    if (isObject(c.steps)) {
+      for (const [step, id] of Object.entries(c.steps)) {
+        const n = Number(step);
+        if (
+          Number.isInteger(n) &&
+          n >= 1 &&
+          n <= CHALLENGES[kind].steps &&
+          typeof id === 'string' &&
+          contributionIds.has(id)
+        ) {
+          steps[String(n)] = id;
+        }
+      }
+    }
+    return [
+      {
+        id: c.id,
+        kind,
+        goalId: c.goalId,
+        unit: c.unit,
+        startedAt:
+          typeof c.startedAt === 'string' && !Number.isNaN(Date.parse(c.startedAt))
+            ? c.startedAt
+            : new Date().toISOString(),
+        steps,
+      },
+    ];
+  });
+}
+
 const timestampOrNull = (v: unknown): string | null =>
   typeof v === 'string' && !Number.isNaN(Date.parse(v)) ? v : null;
 
 export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
   if (!isObject(saved)) return defaults;
   const goals = sanitizeGoals(saved.goals);
+  const goalIds = new Set(goals.map((g) => g.id));
+  const contributions = sanitizeContributions(saved.contributions, goalIds);
   return {
     onboardingComplete: saved.onboardingComplete === true,
     profile: sanitizeProfile(saved.profile, defaults.profile),
@@ -194,6 +254,11 @@ export function sanitizeAppData(saved: unknown, defaults: AppData): AppData {
     backupPromptSnoozedAt: timestampOrNull(saved.backupPromptSnoozedAt),
     installPromptDismissed: saved.installPromptDismissed === true,
     goals,
-    contributions: sanitizeContributions(saved.contributions, new Set(goals.map((g) => g.id))),
+    contributions,
+    challenges: sanitizeChallenges(
+      saved.challenges,
+      goalIds,
+      new Set(contributions.map((c) => c.id)),
+    ),
   };
 }

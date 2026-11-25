@@ -4,6 +4,7 @@ import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 
 import { AdviceNote } from '@/components/budget/advice-note';
+import { ChallengeCard } from '@/components/challenges/challenge-card';
 import { SavingsLineChart } from '@/components/charts/savings-line-chart';
 import { ContributionRow } from '@/components/goals/contribution-row';
 import { GoalAvatar } from '@/components/goals/goal-avatar';
@@ -266,6 +267,10 @@ export default function GoalDetailScreen() {
             />
           )}
         </Card>
+
+        {!archived && (
+          <ChallengeCard goals={[goal]} contributions={contributions} goalId={goal.id} index={1} />
+        )}
 
         {!complete && goal.targetDate && progress.monthlyNeeded !== null && (
           <Card title="Monthly plan" index={1}>

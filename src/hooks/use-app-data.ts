@@ -107,6 +107,16 @@ export function useGoalContributions(goalId: string) {
   return contributionsForGoal(goalId, contributions);
 }
 
+/** All savings challenges. */
+export function useChallenges() {
+  return useAppStore((s) => s.challenges);
+}
+
+/** One challenge, or undefined if it doesn't exist (any more). */
+export function useChallenge(id: string) {
+  return useAppStore((s) => s.challenges.find((c) => c.id === id));
+}
+
 /** Progress numbers for one goal, or undefined if the goal doesn't exist. */
 export function useGoalProgress(goalId: string) {
   const goal = useGoal(goalId);
@@ -136,6 +146,9 @@ export function useAppActions() {
       addContributions: s.addContributions,
       updateContribution: s.updateContribution,
       deleteContribution: s.deleteContribution,
+      startChallenge: s.startChallenge,
+      toggleChallengeStep: s.toggleChallengeStep,
+      endChallenge: s.endChallenge,
       updateReminders: s.updateReminders,
       updateAbout: s.updateAbout,
       setAppearance: s.setAppearance,

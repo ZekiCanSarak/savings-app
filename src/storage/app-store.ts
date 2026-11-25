@@ -8,6 +8,7 @@ import { demoData } from '@/data/demo';
 import type {
   AboutYou,
   AppData,
+  ChallengeKind,
   Appearance,
   Contribution,
   RepeatingSaving,
@@ -15,8 +16,9 @@ import type {
   SavingsGoal,
   UserProfile,
 } from '@/types/models';
-import { nowIsoTimestamp } from '@/utils/dates';
+import { nowIsoTimestamp, todayIsoDate } from '@/utils/dates';
 import type { BackupData } from '@/utils/backup';
+import { challengeNote, stepAmount } from '@/utils/challenges';
 import { createId } from '@/utils/id';
 import { DEFAULT_ABOUT, reminderDefaultsFor } from '@/utils/personal';
 import { dueRepeatingSavings } from '@/utils/repeating';
@@ -66,7 +68,7 @@ const safeStorage: StateStorage = {
 };
 
 /** Bump this when AppData's shape changes, and handle the old shape in `migrate`. */
-const STORAGE_VERSION = 9;
+const STORAGE_VERSION = 10;
 const STORAGE_KEY = 'savings-app-data';
 
 export type NewGoal = Omit<SavingsGoal, 'id' | 'createdAt'>;
@@ -131,6 +133,16 @@ type AppActions = {
   /** Logs every repeating saving that has fallen due (see utils/repeating.ts). */
   logRepeatingSavings: (today?: string) => void;
 
+  /** Starts a savings challenge for a goal. Returns its id. */
+  startChallenge: (kind: ChallengeKind, goalId: string, unit: number) => string;
+  /**
+   * Ticks a step (logging its saving to the goal, dated today) or unticks it
+   * (removing that saving again), in one change.
+   */
+  toggleChallengeStep: (challengeId: string, step: number) => void;
+  /** Stops a challenge. Savings it already logged stay in the goal. */
+  endChallenge: (challengeId: string) => void;
+
   /** A backup file was just exported. */
   markBackedUp: () => void;
   snoozeBackupPrompt: () => void;
@@ -173,6 +185,7 @@ const initialData: AppData = {
   installPromptDismissed: false,
   goals: [],
   contributions: [],
+  challenges: [],
 };
 
 export const useAppStore = create<AppState>()(
@@ -215,6 +228,7 @@ export const useAppStore = create<AppState>()(
         set((s) => ({
           goals: s.goals.filter((g) => g.id !== id),
           contributions: s.contributions.filter((c) => c.goalId !== id),
+          challenges: s.challenges.filter((c) => c.goalId !== id),
         })),
 
       addContribution: (contribution) => {
@@ -250,11 +264,12 @@ export const useAppStore = create<AppState>()(
       markPaydayCheckIn: (paydayCheckIn) => set({ paydayCheckIn }),
       dismissYearReview: (yearReviewDismissed) => set({ yearReviewDismissed }),
 
-      importBackup: ({ profile, goals, contributions, about }) =>
+      importBackup: ({ profile, goals, contributions, about, challenges }) =>
         set((s) => ({
           profile,
           goals,
           contributions,
+          challenges: challenges ?? [],
           // Older backups have no answers; keep this device's then.
           about: about ?? s.about,
           onboardingComplete: true,
@@ -299,6 +314,46 @@ export const useAppStore = create<AppState>()(
           };
         }),
 
+      startChallenge: (kind, goalId, unit) => {
+        const id = createId();
+        set((s) => ({
+          challenges: [...s.challenges, { id, kind, goalId, unit, startedAt: nowIsoTimestamp(), steps: {} }],
+        }));
+        return id;
+      },
+      toggleChallengeStep: (challengeId, step) =>
+        set((s) => {
+          const challenge = s.challenges.find((c) => c.id === challengeId);
+          if (!challenge) return s;
+          const key = String(step);
+          const existing = challenge.steps[key];
+          if (existing && s.contributions.some((c) => c.id === existing)) {
+            const { [key]: _removed, ...steps } = challenge.steps;
+            return {
+              contributions: s.contributions.filter((c) => c.id !== existing),
+              challenges: s.challenges.map((c) => (c.id === challengeId ? { ...c, steps } : c)),
+            };
+          }
+          const id = createId();
+          return {
+            contributions: [
+              ...s.contributions,
+              {
+                id,
+                goalId: challenge.goalId,
+                amount: stepAmount(challenge.kind, step, challenge.unit),
+                date: todayIsoDate(),
+                note: challengeNote(challenge.kind, step),
+              },
+            ],
+            challenges: s.challenges.map((c) =>
+              c.id === challengeId ? { ...c, steps: { ...c.steps, [key]: id } } : c,
+            ),
+          };
+        }),
+      endChallenge: (challengeId) =>
+        set((s) => ({ challenges: s.challenges.filter((c) => c.id !== challengeId) })),
+
       markBackedUp: () => set({ lastBackupAt: nowIsoTimestamp() }),
       snoozeBackupPrompt: () => set({ backupPromptSnoozedAt: nowIsoTimestamp() }),
       dismissInstallPrompt: () => set({ installPromptDismissed: true }),
@@ -328,6 +383,7 @@ export const useAppStore = create<AppState>()(
         installPromptDismissed: s.installPromptDismissed,
         goals: s.goals,
         contributions: s.contributions,
+        challenges: s.challenges,
       }),
       // Fill in fields missing from older saves with defaults, and repair anything
       // invalid (see sanitize.ts), so a bad save can't crash the app.
@@ -340,7 +396,8 @@ export const useAppStore = create<AppState>()(
         // yearReviewDismissed, payWeekday and withdrawals; v3 → v4 added
         // about.paySchedule; v4 → v5 added demo, startedAt, feedbackPromptDismissed;
         // v5 → v6 added goal.repeating, lastBackupAt, backupPromptSnoozedAt, installPromptDismissed;
-        // v6 → v7 added goal.interestRate; v7 → v8 added goal.archivedAt; v8 → v9 added goal.image.
+        // v6 → v7 added goal.interestRate; v7 → v8 added goal.archivedAt; v8 → v9 added goal.image;
+        // v9 → v10 added challenges.
         // sanitizeAppData fills new fields with defaults, and `askedAt: null`
         // makes Home invite v1 users to answer the "About you" questions.
         const data = persisted as AppData;

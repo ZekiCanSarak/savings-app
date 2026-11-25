@@ -1,4 +1,11 @@
-import { useAbout, useAppActions, useContributions, useGoals, useProfile } from '@/hooks/use-app-data';
+import {
+  useAbout,
+  useAppActions,
+  useChallenges,
+  useContributions,
+  useGoals,
+  useProfile,
+} from '@/hooks/use-app-data';
 import { saveBackupFile } from '@/services/backup-file';
 import { backupFileName, createBackup } from '@/utils/backup';
 
@@ -13,11 +20,12 @@ export function useExportBackup() {
   const goals = useGoals();
   const contributions = useContributions();
   const about = useAbout();
+  const challenges = useChallenges();
   const { markBackedUp } = useAppActions();
 
   return async function exportBackup(): Promise<boolean> {
     try {
-      await saveBackupFile(backupFileName(), createBackup({ profile, goals, contributions, about }));
+      await saveBackupFile(backupFileName(), createBackup({ profile, goals, contributions, about, challenges }));
       markBackedUp();
       return true;
     } catch (error) {

@@ -1,6 +1,7 @@
 import { DEFAULT_CURRENCY } from '@/constants/currencies';
 import {
   sanitizeAbout,
+  sanitizeChallenges,
   sanitizeContributions,
   sanitizeGoals,
   sanitizeProfile,
@@ -24,6 +25,8 @@ import type { ValidationResult } from '@/utils/validation';
  */
 export type BackupData = Pick<AppData, 'profile' | 'goals' | 'contributions'> & {
   about?: AppData['about'];
+  /** Missing from backups made before savings challenges existed. */
+  challenges?: AppData['challenges'];
 };
 
 type BackupFile = {
@@ -53,6 +56,7 @@ export function createBackup(data: BackupData, exportedAt = nowIsoTimestamp()): 
       goals: data.goals,
       contributions: data.contributions,
       about: data.about,
+      challenges: data.challenges,
     },
   };
   return JSON.stringify(file, null, 2);
@@ -85,6 +89,8 @@ export function parseBackup(text: string): ValidationResult<BackupData> {
 
   const { data } = parsed;
   const goals = sanitizeGoals(data.goals);
+  const goalIds = new Set(goals.map((g) => g.id));
+  const contributions = sanitizeContributions(data.contributions, goalIds);
   return {
     ok: true,
     value: {
@@ -94,8 +100,9 @@ export function parseBackup(text: string): ValidationResult<BackupData> {
         monthlyIncome: null,
       }),
       goals,
-      contributions: sanitizeContributions(data.contributions, new Set(goals.map((g) => g.id))),
+      contributions,
       ...(isObject(data.about) ? { about: sanitizeAbout(data.about, DEFAULT_ABOUT) } : {}),
+      challenges: sanitizeChallenges(data.challenges, goalIds, new Set(contributions.map((c) => c.id))),
     },
   };
 }
